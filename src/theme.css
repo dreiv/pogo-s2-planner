@@ -90,13 +90,100 @@
   }
 }
 
+/* POI popup card (Leaflet popup content) */
+.poi-popup {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.poi-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.poi-popup-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.poi-popup-desc {
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.poi-popup-address {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+}
+
+/* Kind badge (pill) — solid color per kind, white text. */
+.poi-badge {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.poi-badge-stop {
+  background: var(--poi-stop);
+}
+
+.poi-badge-gym {
+  background: var(--poi-gym);
+}
+
+.poi-badge-powerspot {
+  background: var(--poi-powerspot);
+}
+
+.poi-badge-other {
+  background: var(--poi-other);
+}
+
 /* POI popup photo (Leaflet popup content) */
 .poi-photo {
   display: block;
   width: 100%;
-  max-width: 240px;
-  max-height: 180px;
+  max-height: 200px;
   object-fit: cover;
   border-radius: 6px;
-  margin-top: 6px;
+}
+
+/* Leaflet popup close button — larger, easier to tap.
+   Matches Leaflet's own selector specificity so this override wins. */
+.leaflet-container a.leaflet-popup-close-button {
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+  color: var(--text-primary);
+}
+
+/* Dark theme: match the Leaflet popup to the app chrome so the
+   (light) text tokens stay readable. Leaflet ships a white popup. */
+@media (prefers-color-scheme: dark) {
+  .leaflet-popup-content-wrapper {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+  }
+
+  .leaflet-popup-tip {
+    background: var(--bg-panel);
+  }
 }

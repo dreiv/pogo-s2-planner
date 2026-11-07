@@ -11,6 +11,14 @@ export interface PoiPopupOptions {
   onResize: () => void
 }
 
+/** Human-readable label for each POI kind (used on the badge). */
+const KIND_LABEL: Record<PoiKind, string> = {
+  stop: 'PokéStop',
+  gym: 'Gym',
+  powerspot: 'Power Spot',
+  other: 'Other'
+}
+
 /**
  * Build the popup content as a DOM element.
  * Uses textContent for all text (safe against injection).
@@ -24,16 +32,27 @@ export function buildPoiPopupContent(
   const container = document.createElement('div')
   container.className = 'poi-popup'
 
-  // Title
+  // Header: kind badge + title
+  const header = document.createElement('div')
+  header.className = 'poi-popup-header'
+
+  const badge = document.createElement('span')
+  badge.className = `poi-badge poi-badge-${kind}`
+  badge.textContent = KIND_LABEL[kind]
+  header.appendChild(badge)
+
   if (poi.title) {
     const titleEl = document.createElement('strong')
+    titleEl.className = 'poi-popup-title'
     titleEl.textContent = poi.title
-    container.appendChild(titleEl)
+    header.appendChild(titleEl)
   }
+  container.appendChild(header)
 
   // Description
   if (poi.description) {
     const descEl = document.createElement('p')
+    descEl.className = 'poi-popup-desc'
     descEl.textContent = poi.description
     container.appendChild(descEl)
   }
@@ -41,14 +60,10 @@ export function buildPoiPopupContent(
   // Address
   if (poi.address) {
     const addrEl = document.createElement('small')
+    addrEl.className = 'poi-popup-address'
     addrEl.textContent = poi.address
     container.appendChild(addrEl)
   }
-
-  // Kind label
-  const kindEl = document.createElement('em')
-  kindEl.textContent = kind
-  container.appendChild(kindEl)
 
   // Image: only for stop/gym, stable URL, and showImages enabled
   if (opts.showImages && (kind === 'stop' || kind === 'gym')) {

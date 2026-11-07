@@ -141,8 +141,7 @@ const s14Legend: LegendItem[] = [
         <section class="panel-section">
           <h3>Field</h3>
           <label class="toggle-row">
-            <input
-type="checkbox" :checked="settings.fieldMode"
+            <input type="checkbox" :checked="settings.fieldMode"
               @change="settings.setFieldMode(($event.target as HTMLInputElement).checked)" />
             <span>Track location (GPS)</span>
           </label>
@@ -157,8 +156,7 @@ type="checkbox" :checked="settings.fieldMode"
         <section v-if="settings.showS14Stats" class="panel-section">
           <h3>S14 Legend (stats)</h3>
           <div v-for="item in s14Legend" :key="item.label" class="legend-row">
-            <span
-class="legend-swatch"
+            <span class="legend-swatch"
               :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
             <span>{{ item.label }}</span>
           </div>
@@ -166,8 +164,7 @@ class="legend-swatch"
         <section class="panel-section">
           <h3>S17 Legend</h3>
           <div v-for="item in s17Legend" :key="item.label" class="legend-row">
-            <span
-class="legend-swatch"
+            <span class="legend-swatch"
               :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
             <span>{{ item.label }}</span>
           </div>
@@ -327,8 +324,11 @@ body {
     border-color: var(--border-subtle);
   }
 
-  .leaflet-control-zoom a:hover {
+  .leaflet-control-zoom a:hover,
+  .leaflet-control-zoom a:focus {
     background: var(--bg-hover);
+    color: var(--text-primary);
+    outline: none;
   }
 
   .leaflet-control-attribution {
