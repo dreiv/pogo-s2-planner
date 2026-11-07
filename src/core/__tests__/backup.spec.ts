@@ -35,7 +35,6 @@ function makeSettings(): ExportedSettings {
     rangeCenter: [45.71, 21.31],
     showRangeRings: false,
     showS14Stats: true,
-    satelliteView: false,
     showPoiImages: true
   }
 }
@@ -228,8 +227,7 @@ describe('parseBackup', () => {
         rangeRadius: 80,
         rangeCenter: null,
         showRangeRings: false,
-        showS14Stats: false,
-        satelliteView: false
+        showS14Stats: false
         // showPoiImages intentionally omitted (old backup)
       } as unknown as ExportedSettings
     }

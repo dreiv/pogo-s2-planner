@@ -98,13 +98,6 @@ const s14Legend: LegendItem[] = [
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <section class="panel-section">
-          <h3>Map</h3>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.satelliteView" @change="settings.toggleSatelliteView()" />
-            <span>Satellite view</span>
-          </label>
-        </section>
-        <section class="panel-section">
           <h3>S2 Grids</h3>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showS14" @change="settings.toggleS14()" />

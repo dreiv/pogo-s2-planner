@@ -19,7 +19,6 @@ export interface SettingsState {
   rangeCenter: [number, number] | null
   showRangeRings: boolean
   showS14Stats: boolean
-  satelliteView: boolean
   fieldMode: boolean
   followPosition: boolean
   showPoiImages: boolean
@@ -62,7 +61,6 @@ export const useSettingsStore = defineStore('settings', {
       rangeCenter: saved.rangeCenter ?? null,
       showRangeRings: saved.showRangeRings ?? false,
       showS14Stats: saved.showS14Stats ?? false,
-      satelliteView: saved.satelliteView ?? false,
       fieldMode: saved.fieldMode ?? false,
       followPosition: saved.followPosition ?? false,
       showPoiImages: saved.showPoiImages ?? true
@@ -127,10 +125,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleShowS14Stats(): void {
       this.showS14Stats = !this.showS14Stats
-      persist(this.$state)
-    },
-    toggleSatelliteView(): void {
-      this.satelliteView = !this.satelliteView
       persist(this.$state)
     },
     setFieldMode(on: boolean): void {

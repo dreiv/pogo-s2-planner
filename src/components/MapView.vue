@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, provide, watch } from 'vue'
-import { createMap, setBaseLayer } from '../map/createMap'
+import { createMap } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
 import { startFieldMode } from '../map/fieldMode'
 import { MAP_CONTEXT_KEY, type MapContext } from '../map/MapContext'
@@ -285,8 +285,7 @@ onMounted(() => {
 
   map = createMap(containerRef.value, {
     center: settings.center,
-    zoom: settings.zoom,
-    satellite: settings.satelliteView
+    zoom: settings.zoom
   })
 
   // Provide map context for child layers
@@ -334,14 +333,6 @@ watch(
 watch(
   () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly, settings.showPoiImages] as const,
   () => syncPoiLayer()
-)
-
-// React to base map (OSM / satellite) toggle
-watch(
-  () => settings.satelliteView,
-  (satellite) => {
-    if (map) setBaseLayer(map, satellite)
-  }
 )
 
 // React to range settings

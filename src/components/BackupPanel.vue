@@ -30,7 +30,6 @@ function collectSettings(): ExportedSettings {
     rangeCenter: settings.rangeCenter,
     showRangeRings: settings.showRangeRings,
     showS14Stats: settings.showS14Stats,
-    satelliteView: settings.satelliteView,
     showPoiImages: settings.showPoiImages
   }
 }
@@ -121,7 +120,6 @@ async function importFromInput(e: Event): Promise<void> {
   settings.setRangeCenter(s.rangeCenter)
   settings.showRangeRings = s.showRangeRings
   settings.showS14Stats = s.showS14Stats
-  settings.satelliteView = s.satelliteView
 
   message.value = `Imported: ${result.marks.length} mark(s), settings restored.`
   error.value = ''

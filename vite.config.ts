@@ -39,11 +39,9 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/tiles\//, /^\/data\//],
         runtimeCaching: [
           {
-            // Map tiles (OSM + Esri satellite): network-only, never persisted
+            // Map tiles (OSM): network-only, never persisted
             // (tile policy — no caching of third-party tiles).
-            urlPattern: ({ url }) =>
-              url.hostname === 'tile.openstreetmap.org' ||
-              url.hostname === 'server.arcgisonline.com',
+            urlPattern: ({ url }) => url.hostname === 'tile.openstreetmap.org',
             handler: 'NetworkOnly'
           }
         ]
