@@ -6,6 +6,7 @@
 import L from 'leaflet'
 import { cellsIntersectingCircle } from '../core/geo'
 import { cellVertices } from '../core/s2'
+import { RANGE_COLORS } from '../theme'
 
 export interface RangeLayerOptions {
   /** Radius in meters. Default: 80. */
@@ -89,8 +90,8 @@ export class RangeLayer {
     // Draw circle
     this.circle = L.circle([lat, lng], {
       radius: this.opts.radius,
-      color: '#3b82f6',
-      fillColor: '#3b82f6',
+      color: RANGE_COLORS.circle,
+      fillColor: RANGE_COLORS.circle,
       fillOpacity: 0.1,
       weight: 2,
       dashArray: '6 4'
@@ -99,7 +100,7 @@ export class RangeLayer {
     // Center marker (divIcon, not default Leaflet marker)
     const icon = L.divIcon({
       className: 'range-center-icon',
-      html: '<div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>',
+      html: `<div style="width:12px;height:12px;border-radius:50%;background:${RANGE_COLORS.circle};border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>`,
       iconSize: [12, 12],
       iconAnchor: [6, 6]
     })
@@ -117,14 +118,14 @@ export class RangeLayer {
     if (this.opts.showS17) {
       const s17Cells = cellsIntersectingCircle(lat, lng, this.opts.radius, 17)
       for (const cell of s17Cells) {
-        this.addCellOutline(cell.token, '#ef4444')
+        this.addCellOutline(cell.token, RANGE_COLORS.s17Outline)
       }
     }
 
     if (this.opts.showS14) {
       const s14Cells = cellsIntersectingCircle(lat, lng, this.opts.radius, 14)
       for (const cell of s14Cells) {
-        this.addCellOutline(cell.token, '#3b82f6')
+        this.addCellOutline(cell.token, RANGE_COLORS.s14Outline)
       }
     }
   }

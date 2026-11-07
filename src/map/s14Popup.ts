@@ -14,12 +14,12 @@ export function showS14StatsPopup(map: L.Map, latlng: L.LatLngExpression, stats:
       <br/>
       Stop: ${stats.stopCount} | Gym: ${stats.gymCount} | Total: ${stats.totalPoi}
       <br/>
-      Est. gym-uri: ${stats.expectedGyms}
+      Est. gyms: ${stats.expectedGyms}
       <br/>
-      Mai trebuie: ${stats.poiToNextThreshold} POI
+      Still needed: ${stats.poiToNextThreshold} POI
       <br/>
-      S17 libere: ${stats.freeS17Count}/64
-      ${stats.truncated ? '<br/><em style="color:#92400e">⚠ S14 trunchiat</em>' : ''}
+      Free S17: ${stats.freeS17Count}/64
+      ${stats.truncated ? '<br/><em style="color:#92400e">⚠ S14 truncated</em>' : ''}
     </div>
   `
   const popup = L.popup({ maxWidth: 280 }).setLatLng(latlng).setContent(html)

@@ -3,7 +3,7 @@
  * Computes per-S14 POI counts, expected gyms, free S17 cells, and truncation flags.
  */
 import type { ParsedPoi, ParsedCell } from './wayfarer/parse'
-import { poiKind, poiOccupies, type ClassifyOptions } from './classify'
+import { poiKind, poiOccupies, DEFAULT_CLASSIFY_OPTS, type ClassifyOptions } from './classify'
 import { parentToken, allDescendantTokens, cellTokenAt } from './s2'
 
 /**
@@ -57,7 +57,7 @@ export interface StatsOptions {
 
 export const DEFAULT_STATS_OPTS: StatsOptions = {
   thresholds: DEFAULT_THRESHOLDS,
-  classifyOpts: { powerspotCounts: false, activeBrand: 'HOLOHOLO' }
+  classifyOpts: { ...DEFAULT_CLASSIFY_OPTS }
 }
 
 /**

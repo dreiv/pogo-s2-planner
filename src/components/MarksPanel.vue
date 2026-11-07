@@ -2,24 +2,19 @@
 import { ref } from 'vue'
 import { useMarksStore } from '../stores/marks'
 import type { MarkStatus } from '../data/db'
+import { MARK_STATUS_COLORS } from '../theme'
 
 const marks = useMarksStore()
 
 const STATUS_LABELS: Record<MarkStatus, string> = {
-  planificat: 'Planificat',
-  propus: 'Propus',
-  'in-review': 'În review',
-  respins: 'Respins',
-  aprobat: 'Aprobat'
+  planificat: 'Planned',
+  propus: 'Proposed',
+  'in-review': 'In review',
+  respins: 'Rejected',
+  aprobat: 'Approved'
 }
 
-const STATUS_COLORS: Record<MarkStatus, string> = {
-  planificat: '#3b82f6',
-  propus: '#f59e0b',
-  'in-review': '#8b5cf6',
-  respins: '#ef4444',
-  aprobat: '#22c55e'
-}
+const STATUS_COLORS: Record<MarkStatus, string> = MARK_STATUS_COLORS
 
 const allStatuses: MarkStatus[] = ['planificat', 'propus', 'in-review', 'respins', 'aprobat']
 
@@ -61,10 +56,10 @@ defineExpose({ selectCell })
 
 <template>
   <section class="panel-section">
-    <h3>Marcaje manuale</h3>
+    <h3>Manual marks</h3>
 
     <div v-if="!selectedToken" class="marks-hint">
-      Click pe o celulă S17 pentru a o marca.
+      Click an S17 cell to mark it.
     </div>
 
     <div v-else class="marks-editor">
@@ -82,13 +77,13 @@ v-for="s in allStatuses" :key="s" class="status-btn"
         </button>
       </div>
 
-      <input v-model="noteInput" class="note-input" type="text" placeholder="Notă opțională..." @input="onNoteInput" />
+      <input v-model="noteInput" class="note-input" type="text" placeholder="Optional note..." @input="onNoteInput" />
 
-      <button class="remove-btn" @click="removeMark">Șterge marcajul</button>
+      <button class="remove-btn" @click="removeMark">Delete mark</button>
     </div>
 
     <div v-if="marks.marks.length > 0" class="marks-count">
-      {{ marks.marks.length }} celulă(e) marcată(e)
+      {{ marks.marks.length }} marked cell(s)
     </div>
   </section>
 </template>
@@ -96,7 +91,7 @@ v-for="s in allStatuses" :key="s" class="status-btn"
 <style scoped>
 .marks-hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 4px 0;
 }
 
@@ -110,7 +105,7 @@ v-for="s in allStatuses" :key="s" class="status-btn"
 }
 
 .token-label {
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .status-buttons {
@@ -125,7 +120,8 @@ v-for="s in allStatuses" :key="s" class="status-btn"
   padding: 3px 8px;
   border: 2px solid;
   border-radius: 4px;
-  background: #fff;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -135,73 +131,37 @@ v-for="s in allStatuses" :key="s" class="status-btn"
 }
 
 .status-btn:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .note-input {
   width: 100%;
   font-size: 11px;
   padding: 4px 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 4px;
   margin-bottom: 6px;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 .remove-btn {
   font-size: 11px;
   padding: 4px 8px;
-  border: 1px solid #ef4444;
+  border: 1px solid var(--accent-red);
   border-radius: 4px;
-  background: #fff;
-  color: #ef4444;
+  background: var(--bg-panel);
+  color: var(--accent-red);
   cursor: pointer;
 }
 
 .remove-btn:hover {
-  background: #fef2f2;
+  background: var(--accent-red-bg);
 }
 
 .marks-count {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-top: 6px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .marks-hint {
-    color: #9ca3af;
-  }
-
-  .token-label {
-    color: #9ca3af;
-  }
-
-  .status-btn {
-    background: #1f2937;
-    color: #e5e7eb;
-  }
-
-  .status-btn:hover {
-    background: #374151;
-  }
-
-  .note-input {
-    background: #111827;
-    color: #e5e7eb;
-    border-color: #4b5563;
-  }
-
-  .remove-btn {
-    background: #1f2937;
-    color: #f87171;
-  }
-
-  .remove-btn:hover {
-    background: #374151;
-  }
-
-  .marks-count {
-    color: #9ca3af;
-  }
 }
 </style>

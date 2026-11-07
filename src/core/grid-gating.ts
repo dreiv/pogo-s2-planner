@@ -25,7 +25,7 @@ export function shouldShowGrid(input: GridGatingInput): GridGatingResult {
   if (input.zoom < input.minZoom) {
     return {
       visible: false,
-      hint: `Zoom in ca să vezi grila (min zoom ${input.minZoom})`
+      hint: `Zoom in to see the grid (min zoom ${input.minZoom})`
     }
   }
   return { visible: true, hint: null }

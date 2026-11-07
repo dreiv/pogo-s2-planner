@@ -10,6 +10,12 @@ import PwaUpdate from './components/PwaUpdate.vue'
 import { useSettingsStore } from './stores/settings'
 import { useDatasetStore } from './stores/dataset'
 import { useMarksStore } from './stores/marks'
+import {
+  CELL_STATE_COLORS,
+  S14_STATS_COLORS,
+  GRID_STROKE,
+  withAlpha
+} from './theme'
 
 const panelOpen = ref(false)
 const settings = useSettingsStore()
@@ -30,6 +36,56 @@ function onCellSelected(token: string): void {
 function onZoomToS14(token: string): void {
   mapViewRef.value?.zoomToS14(token)
 }
+
+// --- Legend swatches (colors from theme tokens) ---
+interface LegendItem {
+  label: string
+  background: string
+  border: string
+  dashed?: boolean
+}
+
+const s17Legend: LegendItem[] = [
+  {
+    label: 'Occupied (active stop/gym)',
+    background: withAlpha(CELL_STATE_COLORS.occupied, 0.35),
+    border: CELL_STATE_COLORS.occupied
+  },
+  {
+    label: 'Free',
+    background: withAlpha(CELL_STATE_COLORS.free, 0.25),
+    border: CELL_STATE_COLORS.free
+  },
+  {
+    label: 'Free (uncertain – S14 truncated)',
+    background: withAlpha(CELL_STATE_COLORS['free-uncertain'], 0.3),
+    border: CELL_STATE_COLORS['free-uncertain'],
+    dashed: true
+  },
+  {
+    label: 'Unknown (no data)',
+    background: 'transparent',
+    border: GRID_STROKE.s17
+  }
+]
+
+const s14Legend: LegendItem[] = [
+  {
+    label: 'At threshold (0 POI missing)',
+    background: withAlpha(S14_STATS_COLORS.atThreshold, 0.3),
+    border: S14_STATS_COLORS.atThreshold
+  },
+  {
+    label: '1 POI missing',
+    background: withAlpha(S14_STATS_COLORS.nearThreshold, 0.3),
+    border: S14_STATS_COLORS.nearThreshold
+  },
+  {
+    label: '2+ POI missing',
+    background: withAlpha(S14_STATS_COLORS.farThreshold, 0.3),
+    border: S14_STATS_COLORS.farThreshold
+  }
+]
 </script>
 
 <template>
@@ -42,90 +98,74 @@ function onZoomToS14(token: string): void {
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <section class="panel-section">
-          <h3>Hartă</h3>
+          <h3>Map</h3>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.satelliteView" @change="settings.toggleSatelliteView()" />
-            <span>Vedere satelit</span>
+            <span>Satellite view</span>
           </label>
         </section>
         <section class="panel-section">
-          <h3>Grile S2</h3>
+          <h3>S2 Grids</h3>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showS14" @change="settings.toggleS14()" />
-            <span>Grilă S14 (~0.6 km)</span>
+            <span>S14 grid (~0.6 km)</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showS17" @change="settings.toggleS17()" />
-            <span>Grilă S17 (~70 m)</span>
+            <span>S17 grid (~70 m)</span>
           </label>
         </section>
         <section class="panel-section">
           <h3>POI</h3>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showPois" @change="settings.toggleShowPois()" />
-            <span>Afișează POI</span>
+            <span>Show POI</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showOtherPois" @change="settings.toggleShowOtherPois()" />
-            <span>Afișează „other"</span>
+            <span>Show "other"</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.stopGymOnly" @change="settings.toggleStopGymOnly()" />
-            <span>Doar stop/gym</span>
+            <span>Stop/gym only</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.powerspotCounts" @change="settings.togglePowerspotCounts()" />
-            <span>Powerspot = ocupat</span>
+            <span>Powerspot = occupied</span>
           </label>
         </section>
         <section class="panel-section">
-          <h3>În teren</h3>
+          <h3>Field</h3>
           <label class="toggle-row">
             <input
 type="checkbox" :checked="settings.fieldMode"
               @change="settings.setFieldMode(($event.target as HTMLInputElement).checked)" />
-            <span>Urmărire locație (GPS)</span>
+            <span>Track location (GPS)</span>
           </label>
           <label v-if="settings.fieldMode" class="toggle-row">
             <input type="checkbox" :checked="settings.followPosition" @change="settings.toggleFollowPosition()" />
-            <span>Pană la locație</span>
+            <span>Follow location</span>
           </label>
           <button v-if="settings.fieldMode" class="field-range-btn" @click="mapViewRef?.moveRangeToPosition()">
-            Mută centrul range-ului la poziție
+            Move range center to position
           </button>
         </section>
         <section v-if="settings.showS14Stats" class="panel-section">
-          <h3>Legendă S14 (statistici)</h3>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(34,197,94,0.3);border:1px solid #22c55e"></span>
-            <span>La prag (0 POI lipsă)</span>
-          </div>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(245,158,11,0.3);border:1px solid #f59e0b"></span>
-            <span>1 POI lipsă</span>
-          </div>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(239,68,68,0.3);border:1px solid #ef4444"></span>
-            <span>2+ POI lipsă</span>
+          <h3>S14 Legend (stats)</h3>
+          <div v-for="item in s14Legend" :key="item.label" class="legend-row">
+            <span
+class="legend-swatch"
+              :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
+            <span>{{ item.label }}</span>
           </div>
         </section>
         <section class="panel-section">
-          <h3>Legendă S17</h3>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(239,68,68,0.35);border:1px solid #ef4444"></span>
-            <span>Ocupat (stop/gym activ)</span>
-          </div>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(34,197,94,0.25);border:1px solid #22c55e"></span>
-            <span>Liber</span>
-          </div>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:rgba(245,158,11,0.3);border:1px dashed #f59e0b"></span>
-            <span>Liber (incert – S14 trunchiat)</span>
-          </div>
-          <div class="legend-row">
-            <span class="legend-swatch" style="background:transparent;border:1px solid #6b7280"></span>
-            <span>Necunoscut (fără date)</span>
+          <h3>S17 Legend</h3>
+          <div v-for="item in s17Legend" :key="item.label" class="legend-row">
+            <span
+class="legend-swatch"
+              :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
+            <span>{{ item.label }}</span>
           </div>
         </section>
         <S14Panel @zoom-to-s14="onZoomToS14" />
@@ -148,6 +188,8 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
   overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 #app-root {
@@ -162,7 +204,7 @@ body {
   right: 0;
   width: 280px;
   height: 100%;
-  background: #fff;
+  background: var(--bg-panel);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
   transform: translateX(100%);
   transition: transform 0.2s ease;
@@ -182,7 +224,8 @@ body {
   width: 40px;
   height: 40px;
   border: none;
-  background: #fff;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border-radius: 8px 0 0 8px;
   cursor: pointer;
@@ -199,7 +242,7 @@ body {
 }
 
 .placeholder {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -210,7 +253,7 @@ body {
 .panel-section h3 {
   font-size: 13px;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-muted);
   margin: 0 0 8px;
 }
 
@@ -248,89 +291,45 @@ body {
   margin-top: 8px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--bg-subtle);
   font-size: 13px;
   cursor: pointer;
 }
 
 .field-range-btn:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .leaflet-control-zoom a.leaflet-disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: var(--bg-hover);
+  color: var(--text-muted);
   cursor: default;
 }
 
-/* --- Dark theme (follows system) --- */
+/* --- Dark theme (follows system) ---
+   Surface colors come from theme.css tokens (which switch in dark mode).
+   Only Leaflet's own classes and the locate button need explicit overrides. */
 @media (prefers-color-scheme: dark) {
-  body {
-    background: #111827;
-    color: #e5e7eb;
-  }
-
   .side-panel {
-    background: #1f2937;
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.4);
-  }
-
-  .panel-toggle {
-    background: #1f2937;
-    color: #e5e7eb;
-  }
-
-  .panel-section h3 {
-    color: #9ca3af;
-  }
-
-  .field-range-btn {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-
-  .field-range-btn:hover {
-    background: #4b5563;
-  }
-
-  .side-panel h2 {
-    color: #e5e7eb;
-  }
-
-  .toggle-row span {
-    color: #e5e7eb;
-  }
-
-  .legend-row span {
-    color: #d1d5db;
-  }
-
-  .placeholder {
-    color: #9ca3af;
   }
 
   /* Leaflet controls */
   .leaflet-control-zoom a {
-    background: #1f2937;
-    color: #e5e7eb;
-    border-color: #374151;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
   }
 
   .leaflet-control-zoom a:hover {
-    background: #374151;
-  }
-
-  .leaflet-control-zoom a.leaflet-disabled {
-    background: #374151;
-    color: #6b7280;
+    background: var(--bg-hover);
   }
 
   .leaflet-control-attribution {
     background: rgba(31, 41, 55, 0.8);
-    color: #9ca3af;
+    color: var(--text-secondary);
   }
 
   .leaflet-control-attribution a {
@@ -338,8 +337,8 @@ body {
   }
 
   .locate-btn {
-    background: #1f2937;
-    color: #e5e7eb;
+    background: var(--bg-panel);
+    color: var(--text-primary);
   }
 }
 

@@ -20,8 +20,8 @@ function reload(): void {
 
 <template>
   <div v-if="updateAvailable && !reloading" class="pwa-update">
-    <span>Există o versiune nouă.</span>
-    <button class="pwa-update-btn" @click="reload">Reîmprospătează</button>
+    <span>A new version is available.</span>
+    <button class="pwa-update-btn" @click="reload">Refresh</button>
   </div>
 </template>
 
@@ -44,7 +44,7 @@ function reload(): void {
 }
 
 .pwa-update-btn {
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -55,6 +55,6 @@ function reload(): void {
 }
 
 .pwa-update-btn:hover {
-  background: #2563eb;
+  background: var(--accent-blue-strong);
 }
 </style>

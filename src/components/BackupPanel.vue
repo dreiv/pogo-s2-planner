@@ -56,7 +56,7 @@ function download(filename: string, data: unknown): void {
 function exportMarks(): void {
   const file = buildBackup(collectMarks(), collectSettings())
   download('pogo-s2-backup.json', file)
-  message.value = 'Exportat: marcaje + setări.'
+  message.value = 'Exported: marks + settings.'
   error.value = ''
 }
 
@@ -66,7 +66,7 @@ function exportWithDataset(): void {
     cells: dataset.cells
   })
   download('pogo-s2-backup-full.json', file)
-  message.value = 'Exportat: marcaje + setări + dataset. ⚠ Nu comite datele personale.'
+  message.value = 'Exported: marks + settings + dataset. ⚠ Do not commit personal data.'
   error.value = ''
 }
 
@@ -80,14 +80,14 @@ async function importFromInput(e: Event): Promise<void> {
   try {
     raw = JSON.parse(text)
   } catch {
-    error.value = 'JSON invalid — fișierul nu poate fi citit.'
+    error.value = 'Invalid JSON — file could not be read.'
     message.value = ''
     return
   }
 
   const result = parseBackup(raw)
   if (!result.ok) {
-    error.value = result.error ?? 'Import eșuat.'
+    error.value = result.error ?? 'Import failed.'
     message.value = ''
     return
   }
@@ -122,7 +122,7 @@ async function importFromInput(e: Event): Promise<void> {
   settings.showS14Stats = s.showS14Stats
   settings.satelliteView = s.satelliteView
 
-  message.value = `Importat: ${result.marks.length} marcaj(e), setări restaurate.`
+  message.value = `Imported: ${result.marks.length} mark(s), settings restored.`
   error.value = ''
 
   // Reset input so same file can be re-imported
@@ -136,7 +136,7 @@ async function importFromInput(e: Event): Promise<void> {
 
     <div class="backup-actions">
       <button class="btn" @click="exportMarks">
-        ⬇ Export marcaje + setări
+        ⬇ Export marks + settings
       </button>
       <button class="btn btn-warn" @click="exportWithDataset">
         ⬇ Export + dataset (⚠ personal)
@@ -152,8 +152,8 @@ async function importFromInput(e: Event): Promise<void> {
     <p v-if="error" class="msg error">{{ error }}</p>
 
     <p class="backup-note">
-      Exportul implicit NU include datele Wayfarer. Al doilea buton include și datasetul
-      (date personale/Niantic — nu le comite).
+      The default export does NOT include Wayfarer data. The second button also includes the
+      dataset (personal/Niantic data — do not commit it).
     </p>
   </section>
 </template>
@@ -169,26 +169,26 @@ async function importFromInput(e: Event): Promise<void> {
 .btn {
   font-size: 12px;
   padding: 6px 10px;
-  border: 1px solid #3b82f6;
+  border: 1px solid var(--accent-blue);
   border-radius: 4px;
-  background: #eff6ff;
-  color: #1e40af;
+  background: var(--accent-blue-bg);
+  color: var(--accent-blue-text);
   cursor: pointer;
   text-align: left;
 }
 
 .btn:hover {
-  background: #dbeafe;
+  background: var(--accent-blue-bg-hover);
 }
 
 .btn-warn {
-  border-color: #f59e0b;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--accent-amber);
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
 }
 
 .btn-warn:hover {
-  background: #fef3c7;
+  background: var(--accent-amber-bg-hover);
 }
 
 .import-label {
@@ -206,52 +206,18 @@ async function importFromInput(e: Event): Promise<void> {
 
 .msg {
   font-size: 11px;
-  color: #166534;
+  color: var(--text-success);
   margin: 4px 0;
 }
 
 .msg.error {
-  color: #991b1b;
+  color: var(--accent-red-text);
 }
 
 .backup-note {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 6px 0 0;
   line-height: 1.3;
-}
-
-@media (prefers-color-scheme: dark) {
-  .btn {
-    background: #1e3a5f;
-    color: #93c5fd;
-    border-color: #3b82f6;
-  }
-
-  .btn:hover {
-    background: #1e40af;
-  }
-
-  .btn-warn {
-    background: #451a03;
-    color: #fbbf24;
-    border-color: #f59e0b;
-  }
-
-  .btn-warn:hover {
-    background: #78350f;
-  }
-
-  .msg {
-    color: #4ade80;
-  }
-
-  .msg.error {
-    color: #f87171;
-  }
-
-  .backup-note {
-    color: #9ca3af;
-  }
 }
 </style>

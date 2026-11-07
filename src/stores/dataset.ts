@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { db, type ImportRecord } from '../data/db'
 import { parseWayfarer, type ParsedCell, type ParsedPoi } from '../core/wayfarer/parse'
 import { mergeImports } from '../core/wayfarer/merge'
+import { poiKind } from '../core/classify'
 
 export interface ImportSummary {
   poiCount: number
@@ -35,19 +36,10 @@ function countByKind(pois: ParsedPoi[]): {
     powerSpot = 0,
     noGmo = 0
   for (const poi of pois) {
-    if (poi.game.length === 0) {
-      noGmo++
-      continue
-    }
-    const active = poi.game.filter((g) => g.status === 'ACTIVE')
-    if (active.length === 0) {
-      noGmo++
-      continue
-    }
-    const brands = new Set(active.map((g) => g.entity))
-    if (brands.has('POKESTOP')) stop++
-    else if (brands.has('GYM')) gym++
-    else if (brands.has('POWERSPOT')) powerSpot++
+    const kind = poiKind(poi)
+    if (kind === 'stop') stop++
+    else if (kind === 'gym') gym++
+    else if (kind === 'powerspot') powerSpot++
     else noGmo++
   }
   return { stop, gym, powerSpot, noGmo }

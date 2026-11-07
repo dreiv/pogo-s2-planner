@@ -63,13 +63,13 @@ function useMyLocation(): void {
     <h3>Range</h3>
     <label class="toggle-row">
       <input type="checkbox" :checked="settings.showRange" @change="settings.toggleShowRange()" />
-      <span>Instrument de range</span>
+      <span>Range tool</span>
     </label>
 
     <template v-if="settings.showRange">
       <div class="range-controls">
         <label class="range-label">
-          Rază: <strong>{{ settings.rangeRadius }} m</strong>
+          Radius: <strong>{{ settings.rangeRadius }} m</strong>
         </label>
         <input
 type="range" :min="20" :max="500" :step="10" :value="settings.rangeRadius" class="range-slider"
@@ -84,18 +84,18 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
       </div>
 
       <button class="range-btn" @click="useMyLocation">
-        Folosește locația mea
+        Use my location
       </button>
 
       <p v-if="!settings.rangeCenter" class="range-hint">
-        Click pe hartă pentru a seta centrul.
+        Click on the map to set the center.
       </p>
 
       <template v-else>
         <div class="range-stats">
-          <p><strong>{{ stopGymPois.length }}</strong> stop/gym în rază</p>
-          <p><strong>{{ s17Cells.length }}</strong> celule S17 atinse</p>
-          <p><strong>{{ s14Cells.length }}</strong> celule S14 atinse</p>
+          <p><strong>{{ stopGymPois.length }}</strong> stop/gym in range</p>
+          <p><strong>{{ s17Cells.length }}</strong> S17 cells touched</p>
+          <p><strong>{{ s14Cells.length }}</strong> S14 cells touched</p>
         </div>
 
         <ul v-if="stopGymPois.length > 0" class="range-poi-list">
@@ -109,7 +109,7 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 
       <label class="toggle-row">
         <input type="checkbox" :checked="settings.showRangeRings" @change="settings.toggleShowRangeRings()" />
-        <span>Inele 80 m (stop/gym)</span>
+        <span>80 m rings (stop/gym)</span>
       </label>
     </template>
   </section>
@@ -141,16 +141,17 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
   flex: 1;
   padding: 4px 8px;
   font-size: 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .preset-btn.active {
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: #fff;
-  border-color: #3b82f6;
+  border-color: var(--accent-blue);
 }
 
 .range-btn {
@@ -158,19 +159,20 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
   padding: 6px;
   margin: 8px 0;
   font-size: 13px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: #f9fafb;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .range-btn:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .range-hint {
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted);
   margin: 4px 0;
 }
 
@@ -197,7 +199,7 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
   gap: 6px;
   font-size: 12px;
   padding: 3px 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .poi-kind {
@@ -209,19 +211,19 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 }
 
 .poi-kind.stop {
-  background: #3b82f6;
+  background: var(--poi-stop);
 }
 
 .poi-kind.gym {
-  background: #ef4444;
+  background: var(--poi-gym);
 }
 
 .poi-kind.powerspot {
-  background: #f59e0b;
+  background: var(--poi-powerspot);
 }
 
 .poi-kind.other {
-  background: #9ca3af;
+  background: var(--poi-other);
 }
 
 .poi-name {
@@ -232,43 +234,7 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 }
 
 .poi-dist {
-  color: #666;
+  color: var(--text-secondary);
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .preset-btn {
-    background: #1f2937;
-    color: #e5e7eb;
-    border-color: #4b5563;
-  }
-
-  .preset-btn.active {
-    background: #3b82f6;
-    color: #fff;
-    border-color: #3b82f6;
-  }
-
-  .range-btn {
-    background: #1f2937;
-    color: #e5e7eb;
-    border-color: #4b5563;
-  }
-
-  .range-btn:hover {
-    background: #374151;
-  }
-
-  .range-hint {
-    color: #9ca3af;
-  }
-
-  .range-poi-item {
-    border-color: #374151;
-  }
-
-  .poi-dist {
-    color: #9ca3af;
-  }
 }
 </style>

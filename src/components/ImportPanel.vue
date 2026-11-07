@@ -41,7 +41,7 @@ async function handlePaste(): Promise<void> {
 }
 
 async function handleClear(): Promise<void> {
-  if (!confirm('Ștergi toate datele importate?')) return
+  if (!confirm('Delete all imported data?')) return
   await dataset.clearAll()
   lastSummary.value = null
 }
@@ -49,27 +49,27 @@ async function handleClear(): Promise<void> {
 
 <template>
   <section class="import-panel">
-    <h3>Import Wayfarer</h3>
+    <h3>Wayfarer Import</h3>
 
     <div class="import-actions">
       <label class="file-btn">
         <input type="file" accept=".json" :disabled="importing" @change="handleFileUpload" />
-        <span>📂 Fișier JSON</span>
+        <span>📂 JSON file</span>
       </label>
     </div>
 
     <textarea
-v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" rows="4"
+v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows="4"
       :disabled="importing"></textarea>
     <button class="paste-btn" :disabled="importing || !pasteText.trim()" @click="handlePaste">
-      {{ importing ? 'Se importă…' : 'Importă din text' }}
+      {{ importing ? 'Importing…' : 'Import from text' }}
     </button>
 
     <!-- Summary -->
     <div v-if="lastSummary" class="summary">
-      <h4>Rezumat import</h4>
+      <h4>Import summary</h4>
       <dl>
-        <dt>POI-uri</dt>
+        <dt>POIs</dt>
         <dd>{{ lastSummary.poiCount }}</dd>
         <dt>Pokéstop</dt>
         <dd>{{ lastSummary.stopCount }}</dd>
@@ -77,11 +77,11 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
         <dd>{{ lastSummary.gymCount }}</dd>
         <dt>Power Spot</dt>
         <dd>{{ lastSummary.powerSpotCount }}</dd>
-        <dt>Fără GMO</dt>
+        <dt>No GMO</dt>
         <dd>{{ lastSummary.noGmoCount }}</dd>
-        <dt>Celule</dt>
+        <dt>Cells</dt>
         <dd>{{ lastSummary.cellCount }}</dd>
-        <dt>Celule trunchiate</dt>
+        <dt>Truncated cells</dt>
         <dd>{{ lastSummary.truncatedCount }}</dd>
         <dt>Warnings</dt>
         <dd>{{ lastSummary.warningCount }}</dd>
@@ -90,17 +90,17 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 
     <!-- Import history -->
     <div v-if="dataset.imports.length > 0" class="imports-list">
-      <h4>Importuri</h4>
+      <h4>Imports</h4>
       <ul>
         <li v-for="imp in dataset.imports" :key="imp.id">
-          {{ imp.fileName }} — {{ imp.poiCount }} POI, {{ imp.cellCount }} celule
+          {{ imp.fileName }} — {{ imp.poiCount }} POIs, {{ imp.cellCount }} cells
         </li>
       </ul>
     </div>
 
     <!-- Clear -->
     <button v-if="dataset.pois.length > 0" class="clear-btn" @click="handleClear">
-      Șterge toate datele
+      Delete all data
     </button>
   </section>
 </template>
@@ -113,7 +113,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 .import-panel h3 {
   font-size: 13px;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-muted);
   margin: 0 0 8px;
 }
 
@@ -124,7 +124,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 .file-btn {
   display: inline-block;
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--bg-hover);
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -138,17 +138,19 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
   width: 100%;
   font-family: monospace;
   font-size: 11px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 6px;
   resize: vertical;
   margin-bottom: 8px;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 .paste-btn {
   width: 100%;
   padding: 6px;
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -163,7 +165,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 }
 
 .summary {
-  background: #f9fafb;
+  background: var(--bg-subtle);
   border-radius: 6px;
   padding: 8px 12px;
   margin-bottom: 12px;
@@ -173,7 +175,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 .summary h4 {
   margin: 0 0 6px;
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .summary dl {
@@ -184,7 +186,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 }
 
 .summary dt {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .summary dd {
@@ -199,7 +201,7 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 
 .imports-list h4 {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0 0 4px;
 }
 
@@ -218,54 +220,14 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
   width: 100%;
   padding: 6px;
   font-size: 12px;
-  border: 1px solid #ef4444;
+  border: 1px solid var(--accent-red);
   border-radius: 4px;
-  background: #fff;
-  color: #ef4444;
+  background: var(--bg-panel);
+  color: var(--accent-red);
   cursor: pointer;
 }
 
 .clear-btn:hover {
-  background: #fef2f2;
-}
-
-@media (prefers-color-scheme: dark) {
-  .import-panel h3 {
-    color: #9ca3af;
-  }
-
-  .file-btn {
-    background: #374151;
-    color: #e5e7eb;
-  }
-
-  .paste-area {
-    background: #111827;
-    color: #e5e7eb;
-    border-color: #4b5563;
-  }
-
-  .summary {
-    background: #111827;
-  }
-
-  .summary h4,
-  .summary dt {
-    color: #9ca3af;
-  }
-
-  .imports-list h4 {
-    color: #9ca3af;
-  }
-
-  .clear-btn {
-    background: #1f2937;
-    color: #f87171;
-    border-color: #ef4444;
-  }
-
-  .clear-btn:hover {
-    background: #374151;
-  }
+  background: var(--accent-red-bg);
 }
 </style>

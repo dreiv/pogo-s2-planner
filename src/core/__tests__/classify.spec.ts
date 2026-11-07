@@ -19,19 +19,19 @@ function makePoi(lat: number, lng: number, game: ParsedPoi['game'] = []): Parsed
 }
 
 function activeStop(): ParsedPoi['game'][number] {
-  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }
+  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'POKEMON' }
 }
 
 function activeGym(): ParsedPoi['game'][number] {
-  return { entity: 'GYM', status: 'ACTIVE', brand: 'HOLOHOLO' }
+  return { entity: 'GYM', status: 'ACTIVE', brand: 'POKEMON' }
 }
 
 function activePowerSpot(): ParsedPoi['game'][number] {
-  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'HOLOHOLO' }
+  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'POKEMON' }
 }
 
 function inactiveStop(): ParsedPoi['game'][number] {
-  return { entity: 'POKESTOP', status: 'INACTIVE', brand: 'HOLOHOLO' }
+  return { entity: 'POKESTOP', status: 'INACTIVE', brand: 'POKEMON' }
 }
 
 function wrongBrandStop(): ParsedPoi['game'][number] {
@@ -72,6 +72,16 @@ describe('poiKind', () => {
   it('prefers stop over gym when both present', () => {
     const poi = makePoi(45.7, 21.3, [activeGym(), activeStop()])
     expect(poiKind(poi)).toBe('stop')
+  })
+
+  it('matches brand case-insensitively (lowercase pokemon)', () => {
+    const poi = makePoi(45.7, 21.3, [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'pokemon' }])
+    expect(poiKind(poi)).toBe('stop')
+  })
+
+  it('matches when brand is missing (empty string)', () => {
+    const poi = makePoi(45.7, 21.3, [{ entity: 'GYM', status: 'ACTIVE', brand: '' }])
+    expect(poiKind(poi)).toBe('gym')
   })
 })
 

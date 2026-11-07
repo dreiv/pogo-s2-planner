@@ -1,4 +1,5 @@
 import L from 'leaflet'
+import { drawLocationMarker, removeLocationMarker, type LocationMarker } from './locationMarker'
 
 export interface FieldModeCallbacks {
   /** Called on every position update. */
@@ -13,8 +14,7 @@ export interface FieldModeCallbacks {
  * Returns a cleanup function that stops watching and removes layers.
  */
 export function startFieldMode(map: L.Map, cb: FieldModeCallbacks = {}): () => void {
-  let myLocationMarker: L.CircleMarker | null = null
-  let accuracyCircle: L.Circle | null = null
+  let loc: LocationMarker | null = null
   let watchId: number | null = null
 
   function cleanup(): void {
@@ -22,45 +22,25 @@ export function startFieldMode(map: L.Map, cb: FieldModeCallbacks = {}): () => v
       navigator.geolocation.clearWatch(watchId)
       watchId = null
     }
-    if (myLocationMarker) map.removeLayer(myLocationMarker)
-    if (accuracyCircle) map.removeLayer(accuracyCircle)
-    myLocationMarker = null
-    accuracyCircle = null
+    removeLocationMarker(loc)
+    loc = null
   }
 
   if (!navigator.geolocation) {
-    cb.onStopped?.('Geolocation nu e disponibilă')
+    cb.onStopped?.('Geolocation is not available')
     return cleanup
   }
 
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const { latitude, longitude, accuracy } = pos.coords
-      const latlng: L.LatLngExpression = [latitude, longitude]
 
-      if (!accuracyCircle) {
-        accuracyCircle = L.circle(latlng, {
-          radius: accuracy,
-          color: '#4a90d9',
-          fillColor: '#4a90d9',
-          fillOpacity: 0.1,
-          weight: 1
-        }).addTo(map)
+      if (!loc) {
+        loc = drawLocationMarker(map, latitude, longitude, accuracy)
       } else {
-        accuracyCircle.setLatLng(latlng)
-        accuracyCircle.setRadius(accuracy)
-      }
-
-      if (!myLocationMarker) {
-        myLocationMarker = L.circleMarker(latlng, {
-          radius: 6,
-          color: '#2196f3',
-          fillColor: '#2196f3',
-          fillOpacity: 0.8,
-          weight: 2
-        }).addTo(map)
-      } else {
-        myLocationMarker.setLatLng(latlng)
+        loc.accuracy.setLatLng([latitude, longitude])
+        loc.accuracy.setRadius(accuracy)
+        loc.marker.setLatLng([latitude, longitude])
       }
 
       cb.onPosition?.(latitude, longitude, accuracy)

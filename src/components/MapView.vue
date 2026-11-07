@@ -10,12 +10,18 @@ import { RangeLayer } from '../map/RangeLayer'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { useMarksStore } from '../stores/marks'
-import { classifyS17, type CellState } from '../core/classify'
+import { classifyS17, DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
 import { parentToken, cellTokenAt, cellCenter } from '../core/s2'
 import { showCellPopup } from '../map/cellPopup'
 import { showS14StatsPopup } from '../map/s14Popup'
 import { computeS14Stats, type S14Stats } from '../core/stats'
 import type { MarkStatus } from '../data/db'
+import {
+  CELL_STATE_COLORS,
+  MARK_STATUS_COLORS,
+  S14_STATS_COLORS,
+  GRID_STROKE
+} from '../theme'
 
 type LeafletMap = ReturnType<typeof createMap>
 
@@ -51,7 +57,7 @@ function getCellStates(): Map<string, CellState> {
     dataset.pois,
     coveredS14,
     truncatedS14,
-    { powerspotCounts: settings.powerspotCounts, activeBrand: 'HOLOHOLO' }
+    { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts }
   )
   cachedClassifyKey = key
   return cachedCellStates
@@ -66,7 +72,7 @@ function getS14Stats(): Map<string, S14Stats> {
   if (key === cachedStatsKey) return cachedS14Stats
   cachedS14Stats = computeS14Stats(dataset.pois, dataset.cells, {
     thresholds: { poiCounts: [2, 6, 20], gymCounts: [1, 2, 3] },
-    classifyOpts: { powerspotCounts: settings.powerspotCounts, activeBrand: 'HOLOHOLO' },
+    classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
     pendingTokens: marks.pendingTokens
   })
   cachedStatsKey = key
@@ -80,9 +86,9 @@ function makeS14StatsStyle(): CellStyleFn {
     const s = stats.get(token)
     if (!s) return null
     const dist = s.poiToNextThreshold
-    if (dist === 0) return { fillColor: '#22c55e', fillOpacity: 0.2 }
-    if (dist === 1) return { fillColor: '#f59e0b', fillOpacity: 0.25 }
-    return { fillColor: '#ef4444', fillOpacity: 0.2 }
+    if (dist === 0) return { fillColor: S14_STATS_COLORS.atThreshold, fillOpacity: 0.2 }
+    if (dist === 1) return { fillColor: S14_STATS_COLORS.nearThreshold, fillOpacity: 0.25 }
+    return { fillColor: S14_STATS_COLORS.farThreshold, fillOpacity: 0.2 }
   }
 }
 
@@ -95,18 +101,18 @@ function handleS14CellClick(token: string, lat: number, lng: number): void {
 }
 
 const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
-  occupied: { fill: '#ef4444', opacity: 0.25 },
-  free: { fill: '#22c55e', opacity: 0.15 },
-  'free-uncertain': { fill: '#f59e0b', opacity: 0.2 },
-  unknown: { fill: 'transparent', opacity: 0 }
+  occupied: { fill: CELL_STATE_COLORS.occupied, opacity: 0.25 },
+  free: { fill: CELL_STATE_COLORS.free, opacity: 0.15 },
+  'free-uncertain': { fill: CELL_STATE_COLORS['free-uncertain'], opacity: 0.2 },
+  unknown: { fill: CELL_STATE_COLORS.unknown, opacity: 0 }
 }
 
 const MARK_COLORS: Record<MarkStatus, string> = {
-  planificat: '#3b82f6',
-  propus: '#f59e0b',
-  'in-review': '#8b5cf6',
-  respins: '#ef4444',
-  aprobat: '#22c55e'
+  planificat: MARK_STATUS_COLORS.planificat,
+  propus: MARK_STATUS_COLORS.propus,
+  'in-review': MARK_STATUS_COLORS['in-review'],
+  respins: MARK_STATUS_COLORS.respins,
+  aprobat: MARK_STATUS_COLORS.aprobat
 }
 
 function makeS17CellStyle(): CellStyleFn {
@@ -164,7 +170,7 @@ function syncGridLayers(): void {
       level: 14,
       minZoom: settings.s14MinZoom,
       maxCells: 1500,
-      color: '#3b82f6',
+      color: GRID_STROKE.s14,
       weight: 2,
       cellStyle: settings.showS14Stats ? makeS14StatsStyle() : undefined,
       onCellClick: handleS14CellClick
@@ -180,7 +186,7 @@ function syncGridLayers(): void {
       level: 17,
       minZoom: settings.s17MinZoom,
       maxCells: 1500,
-      color: '#6b7280',
+      color: GRID_STROKE.s17,
       weight: 1,
       cellStyle: makeS17CellStyle(),
       onCellClick: handleS17CellClick
@@ -399,7 +405,7 @@ defineExpose({ zoomToS14, moveRangeToPosition })
 <template>
   <div class="map-wrapper">
     <div ref="containerRef" class="map-container"></div>
-    <button class="locate-btn" title="Locația mea" @click="handleLocate">
+    <button class="locate-btn" title="My location" @click="handleLocate">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3" />
         <circle cx="12" cy="12" r="8" />
@@ -433,27 +439,16 @@ defineExpose({ zoomToS14, moveRangeToPosition })
   height: 44px;
   border-radius: 50%;
   border: none;
-  background: #fff;
+  background: var(--bg-panel);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .locate-btn:hover {
-  background: #f5f5f5;
-}
-
-@media (prefers-color-scheme: dark) {
-  .locate-btn {
-    background: #1f2937;
-    color: #e5e7eb;
-  }
-
-  .locate-btn:hover {
-    background: #374151;
-  }
+  background: var(--bg-hover);
 }
 </style>

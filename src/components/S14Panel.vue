@@ -4,6 +4,7 @@ import { useDatasetStore } from '../stores/dataset'
 import { useSettingsStore } from '../stores/settings'
 import { useMarksStore } from '../stores/marks'
 import { computeS14Stats, type S14Stats } from '../core/stats'
+import { DEFAULT_CLASSIFY_OPTS } from '../core/classify'
 
 const dataset = useDatasetStore()
 const settings = useSettingsStore()
@@ -41,7 +42,7 @@ function sortIndicator(key: SortKey): string {
 const stats = computed(() => {
   return computeS14Stats(dataset.pois, dataset.cells, {
     thresholds: { poiCounts: [2, 6, 20], gymCounts: [1, 2, 3] },
-    classifyOpts: { powerspotCounts: settings.powerspotCounts, activeBrand: 'HOLOHOLO' },
+    classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
     pendingTokens: marks.pendingTokens
   })
 })
@@ -86,25 +87,25 @@ function onRowClick(s: S14Stats): void {
 
 <template>
   <section class="panel-section">
-    <h3>Statistici S14</h3>
+    <h3>S14 Statistics</h3>
 
     <label class="toggle-row">
       <input type="checkbox" :checked="settings.showS14Stats" @change="settings.toggleShowS14Stats()" />
-      <span>Mod statistici (fill S14)</span>
+      <span>Stats mode (S14 fill)</span>
     </label>
 
     <div class="filter-row">
       <label class="filter-chip">
         <input v-model="filters.nearThreshold" type="checkbox" />
-        <span>Aproape de prag (1)</span>
+        <span>Near threshold (1)</span>
       </label>
       <label class="filter-chip">
         <input v-model="filters.hasFreeCells" type="checkbox" />
-        <span>Cu celule libere</span>
+        <span>With free cells</span>
       </label>
       <label class="filter-chip">
         <input v-model="filters.noTruncated" type="checkbox" />
-        <span>Fără trunchiate</span>
+        <span>No truncated</span>
       </label>
     </div>
 
@@ -116,9 +117,9 @@ function onRowClick(s: S14Stats): void {
             <th class="sortable" @click="toggleSort('gymCount')">Gym{{ sortIndicator('gymCount') }}</th>
             <th class="sortable" @click="toggleSort('totalPoi')">Total{{ sortIndicator('totalPoi') }}</th>
             <th class="sortable" @click="toggleSort('expectedGyms')">Est.{{ sortIndicator('expectedGyms') }}</th>
-            <th class="sortable" @click="toggleSort('poiToNextThreshold')">Lipsă{{ sortIndicator('poiToNextThreshold')
-              }}</th>
-            <th class="sortable" @click="toggleSort('freeS17Count')">Libere{{ sortIndicator('freeS17Count') }}</th>
+            <th class="sortable" @click="toggleSort('poiToNextThreshold')">Missing{{ sortIndicator('poiToNextThreshold')
+            }}</th>
+            <th class="sortable" @click="toggleSort('freeS17Count')">Free{{ sortIndicator('freeS17Count') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -133,14 +134,14 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
             <td>{{ s.freeS17Count }}</td>
           </tr>
           <tr v-if="rows.length === 0">
-            <td colspan="6" class="empty">Niciun S14 cu date</td>
+            <td colspan="6" class="empty">No S14 with data</td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <p class="stats-note">
-      Estimare: pragurile (2→1, 6→2, 20→3) sunt regula comunității, nu garanție.
+      Estimate: thresholds (2→1, 6→2, 20→3) are the community rule, not a guarantee.
     </p>
   </section>
 </template>
@@ -161,7 +162,8 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #f3f4f6;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .filter-chip input {
@@ -172,7 +174,7 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
   max-height: 200px;
   overflow-y: auto;
   margin: 6px 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-subtle);
   border-radius: 4px;
 }
 
@@ -185,11 +187,12 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
 .stats-table th {
   position: sticky;
   top: 0;
-  background: #f9fafb;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   padding: 4px 6px;
   text-align: right;
   font-weight: 600;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-subtle);
   cursor: default;
 }
 
@@ -199,13 +202,13 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
 }
 
 .stats-table th.sortable:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .stats-table td {
   padding: 3px 6px;
   text-align: right;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--bg-hover);
 }
 
 .stats-row {
@@ -213,65 +216,23 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
 }
 
 .stats-row:hover {
-  background: #eff6ff;
+  background: var(--accent-blue-bg);
 }
 
 .stats-row.truncated td {
-  color: #92400e;
+  color: var(--accent-amber-text);
 }
 
 .empty {
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-muted);
   padding: 12px;
 }
 
 .stats-note {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 4px 0 0;
   line-height: 1.3;
-}
-
-@media (prefers-color-scheme: dark) {
-  .filter-chip {
-    background: #374151;
-    color: #e5e7eb;
-  }
-
-  .stats-table-wrapper {
-    border-color: #374151;
-  }
-
-  .stats-table th {
-    background: #1f2937;
-    color: #e5e7eb;
-    border-color: #374151;
-  }
-
-  .stats-table th.sortable:hover {
-    background: #374151;
-  }
-
-  .stats-table td {
-    color: #e5e7eb;
-    border-color: #374151;
-  }
-
-  .stats-row:hover {
-    background: #1e3a5f;
-  }
-
-  .stats-row.truncated td {
-    color: #fbbf24;
-  }
-
-  .empty {
-    color: #6b7280;
-  }
-
-  .stats-note {
-    color: #9ca3af;
-  }
 }
 </style>

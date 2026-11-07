@@ -7,16 +7,33 @@ import { cellTokenAt, parentToken } from './s2'
 
 export type PoiKind = 'stop' | 'gym' | 'powerspot' | 'other'
 
+/**
+ * Brand used by real Wayfarer exports for Pokémon game objects.
+ * Matching is case-insensitive and configurable via `ClassifyOptions.activeBrand`.
+ */
+export const DEFAULT_ACTIVE_BRAND = 'POKEMON'
+
 export interface ClassifyOptions {
   /** Whether POWERSPOT counts as occupied. Default: false. */
   powerspotCounts: boolean
-  /** Active game brand to match. Default: 'HOLOHOLO'. */
+  /** Active game brand to match (case-insensitive). Default: 'POKEMON'. */
   activeBrand: string
 }
 
 export const DEFAULT_CLASSIFY_OPTS: ClassifyOptions = {
   powerspotCounts: false,
-  activeBrand: 'HOLOHOLO'
+  activeBrand: DEFAULT_ACTIVE_BRAND
+}
+
+/**
+ * Whether a single game object is an "active" game object for the given options.
+ * Active = status ACTIVE and brand matches (case-insensitive). A missing/empty
+ * brand is treated as a match so exports that omit the field still classify.
+ */
+function isActiveGame(g: ParsedPoi['game'][number], opts: ClassifyOptions): boolean {
+  if (g.status !== 'ACTIVE') return false
+  if (!g.brand) return true
+  return g.brand.toUpperCase() === opts.activeBrand.toUpperCase()
 }
 
 /**
@@ -27,7 +44,7 @@ export const DEFAULT_CLASSIFY_OPTS: ClassifyOptions = {
  * - 'other': everything else (no gmo, inactive, wrong brand, etc.)
  */
 export function poiKind(poi: ParsedPoi, opts: ClassifyOptions = DEFAULT_CLASSIFY_OPTS): PoiKind {
-  const active = poi.game.filter((g) => g.status === 'ACTIVE' && g.brand === opts.activeBrand)
+  const active = poi.game.filter((g) => isActiveGame(g, opts))
   if (active.length === 0) return 'other'
 
   const entities = new Set(active.map((g) => g.entity))

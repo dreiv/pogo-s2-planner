@@ -6,6 +6,7 @@
 import L from 'leaflet'
 import type { ParsedPoi } from '../core/wayfarer/parse'
 import { poiKind, type PoiKind } from '../core/classify'
+import { POI_COLORS } from '../theme'
 
 export interface PoiLayerOptions {
   /** Minimum zoom to show all POI kinds. Below this, only stop/gym. */
@@ -20,13 +21,6 @@ export const DEFAULT_POI_LAYER_OPTS: PoiLayerOptions = {
   fullDetailZoom: 16,
   showOther: true,
   stopGymOnly: false
-}
-
-const KIND_COLORS: Record<PoiKind, string> = {
-  stop: '#3b82f6',
-  gym: '#ef4444',
-  powerspot: '#f59e0b',
-  other: '#9ca3af'
 }
 
 const KIND_RADIUS: Record<PoiKind, number> = {
@@ -95,7 +89,7 @@ export class PoiLayer {
         radius: KIND_RADIUS[kind],
         color: '#ffffff',
         weight: 2,
-        fillColor: KIND_COLORS[kind],
+        fillColor: POI_COLORS[kind],
         fillOpacity: 1,
         opacity: 1
       })
