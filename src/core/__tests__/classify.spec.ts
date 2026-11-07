@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { poiKind, poiOccupies, classifyS17, DEFAULT_CLASSIFY_OPTS } from '../classify'
 import type { ParsedPoi } from '../wayfarer/parse'
-import { cellTokenAt } from '../s2'
+import { cellTokenAt, allDescendantTokens } from '../s2'
 
 function makePoi(lat: number, lng: number, game: ParsedPoi['game'] = []): ParsedPoi {
   return {
@@ -19,19 +19,19 @@ function makePoi(lat: number, lng: number, game: ParsedPoi['game'] = []): Parsed
 }
 
 function activeStop(): ParsedPoi['game'][number] {
-  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function activeGym(): ParsedPoi['game'][number] {
-  return { entity: 'GYM', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'GYM', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function activePowerSpot(): ParsedPoi['game'][number] {
-  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function inactiveStop(): ParsedPoi['game'][number] {
-  return { entity: 'POKESTOP', status: 'INACTIVE', brand: 'POKEMON' }
+  return { entity: 'POKESTOP', status: 'INACTIVE', brand: 'HOLOHOLO' }
 }
 
 function wrongBrandStop(): ParsedPoi['game'][number] {
@@ -74,8 +74,8 @@ describe('poiKind', () => {
     expect(poiKind(poi)).toBe('stop')
   })
 
-  it('matches brand case-insensitively (lowercase pokemon)', () => {
-    const poi = makePoi(45.7, 21.3, [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'pokemon' }])
+  it('matches brand case-insensitively (lowercase holo holo)', () => {
+    const poi = makePoi(45.7, 21.3, [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'holoholo' }])
     expect(poiKind(poi)).toBe('stop')
   })
 
@@ -185,5 +185,19 @@ describe('classifyS17', () => {
     const result = classifyS17(pois, new Set([s14]), new Set())
     // Should be in exactly one cell
     expect(result.get(s17)).toBe('occupied')
+  })
+
+  it('S17 inside a covered S14 with NO POIs at all is absent from map (treated as free)', () => {
+    const lat = 45.728
+    const lng = 21.268
+    const s14 = cellTokenAt(lat, lng, 14)
+    const s17Children = allDescendantTokens(s14, 17)
+    const someS17 = s17Children[0]!
+
+    // No POIs at all — just coverage
+    const result = classifyS17([], new Set([s14]), new Set())
+    // classifyS17 only returns entries for S17s that have POIs.
+    // An S17 with no POIs is absent from the map → UI treats it as free.
+    expect(result.has(someS17)).toBe(false)
   })
 })

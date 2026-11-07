@@ -1,0 +1,116 @@
+{
+  "result": {
+    "success": true,
+    "data": [
+      { "cellId": "47455cd9", "pois": [] },
+      { "cellId": "47455cdf", "pois": [] },
+      {
+        "metadata": {
+          "s2CellLevel": 14,
+          "s2CellId": "47455d01",
+          "generatedTimestamp": "1793975396402",
+          "count": 5,
+          "format": "DETAILED"
+        },
+        "pois": [
+          {
+            "poiId": "synthetic-0001.16",
+            "latE6": 45723360,
+            "lngE6": 21199398,
+            "title": "Synthetic Stop A",
+            "description": "",
+            "address": "",
+            "categoryTags": [],
+            "mainImage": "https://lh3.googleusercontent.com/SYNTHETICIMAGEID0000000000000000000001",
+            "hasAdditionalImages": false,
+            "gmo": [{ "gameBrand": "HOLOHOLO", "entity": "POKESTOP", "status": "ACTIVE" }],
+            "isCommunityContributed": true
+          },
+          {
+            "poiId": "synthetic-0002.16",
+            "latE6": 45723847,
+            "lngE6": 21199125,
+            "title": "Synthetic Gym B",
+            "description": "A synthetic gym.",
+            "address": "Synthetic Street 1",
+            "categoryTags": [],
+            "mainImage": "https://lh3.googleusercontent.com/SYNTHETICIMAGEID0000000000000000000002",
+            "hasAdditionalImages": true,
+            "gmo": [{ "gameBrand": "HOLOHOLO", "entity": "GYM", "status": "ACTIVE" }],
+            "isCommunityContributed": true
+          },
+          {
+            "poiId": "synthetic-0003.23",
+            "latE6": 45725756,
+            "lngE6": 21198847,
+            "title": "Synthetic Shop C",
+            "description": "",
+            "address": "",
+            "categoryTags": [],
+            "mainImage": "",
+            "hasAdditionalImages": false,
+            "gmo": [{ "gameBrand": "HOLOHOLO", "entity": "POWERSPOT", "status": "INACTIVE" }],
+            "isCommunityContributed": false
+          },
+          {
+            "poiId": "synthetic-0004.23",
+            "latE6": 45724277,
+            "lngE6": 21198732,
+            "title": "Synthetic Place D (no gmo)",
+            "description": "",
+            "address": "",
+            "categoryTags": [],
+            "mainImage": "",
+            "hasAdditionalImages": false,
+            "gmo": [],
+            "isCommunityContributed": false
+          },
+          {
+            "poiId": "synthetic-0005.16",
+            "latE6": 45723560,
+            "lngE6": 21199238,
+            "title": "Synthetic Stop E (temporary image link)",
+            "description": "",
+            "address": "",
+            "categoryTags": [],
+            "mainImage": "https://lh3.googleusercontent.com/SYNTHETICTEMPIMAGE000000000000000005?Expires=1793975396&Signature=abc",
+            "hasAdditionalImages": false,
+            "gmo": [{ "gameBrand": "HOLOHOLO", "entity": "POKESTOP", "status": "ACTIVE" }],
+            "isCommunityContributed": true
+          }
+        ],
+        "clusters": [],
+        "cellId": "47455d01"
+      },
+      {
+        "metadata": {
+          "s2CellLevel": 14,
+          "s2CellId": "47455d05",
+          "generatedTimestamp": "1793975511314",
+          "count": 1,
+          "format": "DETAILED"
+        },
+        "pois": [
+          {
+            "poiId": "synthetic-0006.23",
+            "title": "Synthetic POI without coordinates",
+            "gmo": []
+          }
+        ],
+        "clusters": [],
+        "cellId": "47455d05"
+      }
+    ],
+    "cellsQueried": 4,
+    "cellsLoaded": 4,
+    "snapshot": "2026-11-06",
+    "cellLevel": 14
+  },
+  "message": null,
+  "code": "OK",
+  "errorsWithIcon": null,
+  "fieldErrors": null,
+  "errorDetails": null,
+  "version": "synthetic",
+  "captcha": false
+}

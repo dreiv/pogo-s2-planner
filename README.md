@@ -48,6 +48,11 @@ npm run build    # build de producție în dist/
   centrul range-ului după poziție, fără a bloca panoul manual.
 - Service worker-ul face cache **doar** la shell-ul aplicației (JS/CSS/HTML).
   Nu face cache la tile-urile OSM (politica OSM).
+- **Actualizare**: când e disponibilă o versiune nouă, apare un dialog cu
+  „Refresh" / „Later". „Refresh" activează noul service worker și reîncarcă
+  pagina; „Later" ascunde dialogul (versiunea nouă se aplică la următoarea
+  sesiune). Pozele POI se încarcă de la CDN-ul Google doar când deschizi
+  popup-ul; se pot opri din setări („Show POI photos").
 
 ## Publicare pe GitHub Pages
 
@@ -55,12 +60,3 @@ npm run build    # build de producție în dist/
 2. `deploy.yml` rulează build cu `VITE_BASE=/<nume-repo>/` și publică în Pages.
 3. În Settings → Pages, sursa e **GitHub Actions**.
 4. URL final: `https://<user>.github.io/<nume-repo>/`.
-
-## Bucla de lucru
-
-1. Branch `phase-N`, lipești promptul fazei din `docs/PLAN.md` în agent.
-2. `npm run check` trebuie să treacă.
-3. `npm run pack -- N` → `.repomix/phase-N.xml`.
-4. Chat nou, atașezi fișierul, lipești promptul din `docs/prompts/review.md`.
-5. Dacă apar probleme: `docs/prompts/realign.md` în agent.
-6. Merge, apoi `git tag phase-N`.

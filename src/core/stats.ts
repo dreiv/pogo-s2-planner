@@ -4,7 +4,9 @@
  */
 import type { ParsedPoi, ParsedCell } from './wayfarer/parse'
 import { poiKind, poiOccupies, DEFAULT_CLASSIFY_OPTS, type ClassifyOptions } from './classify'
-import { parentToken, allDescendantTokens, cellTokenAt } from './s2'
+import { parentToken, cellTokenAt } from './s2'
+import { s14Children } from './s14Children'
+import type { PoiIndex } from './poiIndex'
 
 /**
  * Gym threshold configuration.
@@ -87,6 +89,21 @@ export function poiToNextThreshold(poiCount: number, thresholds: GymThresholds):
   return 0
 }
 
+/** Group POIs by S14 parent token (used when no pre-computed index is provided). */
+function groupPoisByS14(pois: ParsedPoi[]): Map<string, ParsedPoi[]> {
+  const m = new Map<string, ParsedPoi[]>()
+  for (const poi of pois) {
+    const s14 = parentToken(poi.cellToken, 14)
+    const arr = m.get(s14)
+    if (arr) {
+      arr.push(poi)
+    } else {
+      m.set(s14, [poi])
+    }
+  }
+  return m
+}
+
 /**
  * Compute S14 statistics for all S14 cells in the dataset.
  *
@@ -98,24 +115,16 @@ export function poiToNextThreshold(poiCount: number, thresholds: GymThresholds):
 export function computeS14Stats(
   pois: ParsedPoi[],
   cells: ParsedCell[],
-  opts: StatsOptions = DEFAULT_STATS_OPTS
+  opts: StatsOptions = DEFAULT_STATS_OPTS,
+  index?: PoiIndex
 ): Map<string, S14Stats> {
   const { thresholds, classifyOpts } = opts
 
   // Truncated S14 tokens
   const truncatedSet = new Set(cells.filter((c) => c.truncated).map((c) => c.token))
 
-  // Group POIs by S14 parent token
-  const byS14 = new Map<string, ParsedPoi[]>()
-  for (const poi of pois) {
-    const s14 = parentToken(poi.cellToken, 14)
-    const arr = byS14.get(s14)
-    if (arr) {
-      arr.push(poi)
-    } else {
-      byS14.set(s14, [poi])
-    }
-  }
+  // Use pre-computed index if provided, otherwise group POIs by S14 parent token
+  const byS14 = index?.poisByS14 ?? groupPoisByS14(pois)
 
   // Also include S14 cells that have no POIs (from the cells list)
   for (const cell of cells) {
@@ -143,7 +152,7 @@ export function computeS14Stats(
     const toNext = poiToNextThreshold(totalPoi, thresholds)
 
     // Count free S17 cells: enumerate all 64 S17 children, check occupancy
-    const s17Tokens = allDescendantTokens(s14Token, 17)
+    const s17Tokens = s14Children(s14Token)
     const isTruncated = truncatedSet.has(s14Token)
 
     // Build a set of S17 tokens that have occupying POIs

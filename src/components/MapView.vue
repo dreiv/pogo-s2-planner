@@ -11,10 +11,11 @@ import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { useMarksStore } from '../stores/marks'
 import { classifyS17, DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
-import { parentToken, cellTokenAt, cellCenter } from '../core/s2'
+import { parentToken, cellCenter } from '../core/s2'
+import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
 import { showCellPopup } from '../map/cellPopup'
 import { showS14StatsPopup } from '../map/s14Popup'
-import { computeS14Stats, type S14Stats } from '../core/stats'
+import { computeS14Stats, DEFAULT_THRESHOLDS, type S14Stats } from '../core/stats'
 import type { MarkStatus } from '../data/db'
 import {
   CELL_STATE_COLORS,
@@ -22,6 +23,7 @@ import {
   S14_STATS_COLORS,
   GRID_STROKE
 } from '../theme'
+import { GRID_MAX_CELLS } from '../config'
 
 type LeafletMap = ReturnType<typeof createMap>
 
@@ -37,13 +39,22 @@ let s14Layer: S2GridLayer | null = null
 let s17Layer: S2GridLayer | null = null
 let poiLayer: PoiLayer | null = null
 let rangeLayer: RangeLayer | null = null
+let flushMoveEndRef: (() => void) | null = null
 
 // --- Cell classification (memoized) ---
 let cachedClassifyKey = ''
 let cachedCellStates: Map<string, CellState> = new Map()
+let cachedPoiIndex: PoiIndex | null = null
+
+function getPoiIndex(): PoiIndex {
+  if (!cachedPoiIndex) {
+    cachedPoiIndex = buildPoiIndex(dataset.pois)
+  }
+  return cachedPoiIndex
+}
 
 function getCellStates(): Map<string, CellState> {
-  const key = `${dataset.pois.length}:${dataset.cells.length}:${settings.powerspotCounts}`
+  const key = `${dataset.revision}:${settings.powerspotCounts}`
   if (key === cachedClassifyKey) return cachedCellStates
 
   const coveredS14 = new Set<string>()
@@ -53,12 +64,15 @@ function getCellStates(): Map<string, CellState> {
     if (cell.truncated) truncatedS14.add(cell.token)
   }
 
+  const index = getPoiIndex()
   cachedCellStates = classifyS17(
     dataset.pois,
     coveredS14,
     truncatedS14,
-    { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts }
+    { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
+    index
   )
+
   cachedClassifyKey = key
   return cachedCellStates
 }
@@ -68,13 +82,18 @@ let cachedStatsKey = ''
 let cachedS14Stats: Map<string, S14Stats> = new Map()
 
 function getS14Stats(): Map<string, S14Stats> {
-  const key = `${dataset.pois.length}:${dataset.cells.length}:${settings.powerspotCounts}:${marks.marks.length}`
+  const key = `${dataset.revision}:${settings.powerspotCounts}:${marks.revision}`
   if (key === cachedStatsKey) return cachedS14Stats
-  cachedS14Stats = computeS14Stats(dataset.pois, dataset.cells, {
-    thresholds: { poiCounts: [2, 6, 20], gymCounts: [1, 2, 3] },
-    classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
-    pendingTokens: marks.pendingTokens
-  })
+  cachedS14Stats = computeS14Stats(
+    dataset.pois,
+    dataset.cells,
+    {
+      thresholds: DEFAULT_THRESHOLDS,
+      classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
+      pendingTokens: marks.pendingTokens
+    },
+    getPoiIndex()
+  )
   cachedStatsKey = key
   return cachedS14Stats
 }
@@ -147,9 +166,7 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
   const states = getCellStates()
   const state = states.get(token) ?? 'unknown'
   const s14 = parentToken(token, 14)
-  const cellPois = dataset.pois.filter((p) => {
-    return cellTokenAt(p.lat, p.lng, 17) === token
-  })
+  const cellPois = getPoiIndex().poisByS17.get(token) ?? []
 
   showCellPopup(map, [lat, lng], {
     s17Token: token,
@@ -169,11 +186,12 @@ function syncGridLayers(): void {
     s14Layer = new S2GridLayer(map, {
       level: 14,
       minZoom: settings.s14MinZoom,
-      maxCells: 1500,
+      maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s14,
       weight: 2,
       cellStyle: settings.showS14Stats ? makeS14StatsStyle() : undefined,
-      onCellClick: handleS14CellClick
+      onCellClick: handleS14CellClick,
+      onUpdated: () => poiLayer?.bringToFront()
     })
   } else if (!settings.showS14 && s14Layer) {
     s14Layer.destroy()
@@ -185,17 +203,23 @@ function syncGridLayers(): void {
     s17Layer = new S2GridLayer(map, {
       level: 17,
       minZoom: settings.s17MinZoom,
-      maxCells: 1500,
+      maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s17,
       weight: 1,
       cellStyle: makeS17CellStyle(),
-      onCellClick: handleS17CellClick
+      onCellClick: handleS17CellClick,
+      onUpdated: () => poiLayer?.bringToFront()
     })
   } else if (!settings.showS17 && s17Layer) {
     s17Layer.destroy()
     s17Layer = null
   }
+
+  // Ensure POI markers are on top of grid polygons
+  poiLayer?.bringToFront()
 }
+
+let lastPoiRevision = -1
 
 function syncPoiLayer(): void {
   if (!map) return
@@ -204,18 +228,25 @@ function syncPoiLayer(): void {
     poiLayer = new PoiLayer(map, {
       fullDetailZoom: 16,
       showOther: settings.showOtherPois,
-      stopGymOnly: settings.stopGymOnly
+      stopGymOnly: settings.stopGymOnly,
+      showImages: settings.showPoiImages
     })
     poiLayer.setPois(dataset.pois)
+    lastPoiRevision = dataset.revision
   } else if (!settings.showPois && poiLayer) {
     poiLayer.destroy()
     poiLayer = null
   } else if (poiLayer) {
     poiLayer.setOptions({
       showOther: settings.showOtherPois,
-      stopGymOnly: settings.stopGymOnly
+      stopGymOnly: settings.stopGymOnly,
+      showImages: settings.showPoiImages
     })
-    poiLayer.setPois(dataset.pois)
+    // Only rebuild markers when the dataset actually changed
+    if (dataset.revision !== lastPoiRevision) {
+      poiLayer.setPois(dataset.pois)
+      lastPoiRevision = dataset.revision
+    }
   }
 }
 
@@ -261,13 +292,24 @@ onMounted(() => {
   // Provide map context for child layers
   provide(MAP_CONTEXT_KEY, { map } satisfies MapContext)
 
-  // Persist center/zoom on move
-  map.on('moveend', () => {
+  // Persist center/zoom on move (debounced to avoid writing on every pan step)
+  let moveEndTimer: ReturnType<typeof setTimeout> | null = null
+  const flushMoveEnd = (): void => {
+    if (moveEndTimer !== null) {
+      clearTimeout(moveEndTimer)
+      moveEndTimer = null
+    }
     if (!map) return
     const c = map.getCenter()
     settings.setCenter([c.lat, c.lng])
     settings.setZoom(map.getZoom())
+  }
+  map.on('moveend', () => {
+    if (moveEndTimer !== null) clearTimeout(moveEndTimer)
+    moveEndTimer = setTimeout(flushMoveEnd, 400)
   })
+  // Expose flush so onBeforeUnmount can flush pending writes
+  flushMoveEndRef = flushMoveEnd
 
   // Initial grid layers + POI layer + range layer
   syncGridLayers()
@@ -290,7 +332,7 @@ watch(
 
 // React to POI display settings
 watch(
-  () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly] as const,
+  () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly, settings.showPoiImages] as const,
   () => syncPoiLayer()
 )
 
@@ -310,31 +352,36 @@ watch(
 
 // React to dataset changes (import/clear)
 watch(
-  () => dataset.pois.length,
+  () => dataset.revision,
   () => {
     cachedClassifyKey = '' // invalidate memo
     cachedStatsKey = '' // invalidate stats memo
+    cachedPoiIndex = null // invalidate POI index
     syncPoiLayer()
-    // Rebuild S17 layer to pick up new cell styles
+    // Update grid styles in-place (no destroy/recreate)
     if (s17Layer) {
-      s17Layer.destroy()
-      s17Layer = null
+      s17Layer.setCellStyle(makeS17CellStyle())
     }
-    syncGridLayers()
+    if (s14Layer && settings.showS14Stats) {
+      s14Layer.setCellStyle(makeS14StatsStyle())
+    }
+    // Ensure POI markers are on top
+    poiLayer?.bringToFront()
   }
 )
 
 // React to marks changes
 watch(
-  () => marks.marks.length,
+  () => marks.revision,
   () => {
     cachedStatsKey = '' // invalidate stats memo
-    // Rebuild S17 layer to pick up mark styles
+    // Update S17 styles in-place (marks change colors)
     if (s17Layer) {
-      s17Layer.destroy()
-      s17Layer = null
+      s17Layer.setCellStyle(makeS17CellStyle())
     }
-    syncGridLayers()
+    if (s14Layer && settings.showS14Stats) {
+      s14Layer.setCellStyle(makeS14StatsStyle())
+    }
   }
 )
 
@@ -368,6 +415,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  // Flush pending center/zoom writes before tearing down
+  if (flushMoveEndRef) flushMoveEndRef()
   if (cleanupLocate) cleanupLocate()
   if (cleanupField) cleanupField()
   if (s14Layer) { s14Layer.destroy(); s14Layer = null }

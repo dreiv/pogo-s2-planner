@@ -30,7 +30,8 @@ function collectSettings(): ExportedSettings {
     rangeCenter: settings.rangeCenter,
     showRangeRings: settings.showRangeRings,
     showS14Stats: settings.showS14Stats,
-    satelliteView: settings.satelliteView
+    satelliteView: settings.satelliteView,
+    showPoiImages: settings.showPoiImages
   }
 }
 

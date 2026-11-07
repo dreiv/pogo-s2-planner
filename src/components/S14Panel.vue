@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useDatasetStore } from '../stores/dataset'
 import { useSettingsStore } from '../stores/settings'
 import { useMarksStore } from '../stores/marks'
-import { computeS14Stats, type S14Stats } from '../core/stats'
+import { computeS14Stats, DEFAULT_THRESHOLDS, type S14Stats } from '../core/stats'
 import { DEFAULT_CLASSIFY_OPTS } from '../core/classify'
 
 const dataset = useDatasetStore()
@@ -41,7 +41,7 @@ function sortIndicator(key: SortKey): string {
 // --- Stats ---
 const stats = computed(() => {
   return computeS14Stats(dataset.pois, dataset.cells, {
-    thresholds: { poiCounts: [2, 6, 20], gymCounts: [1, 2, 3] },
+    thresholds: DEFAULT_THRESHOLDS,
     classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
     pendingTokens: marks.pendingTokens
   })

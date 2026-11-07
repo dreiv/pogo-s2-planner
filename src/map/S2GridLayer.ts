@@ -70,6 +70,8 @@ export interface S2GridLayerOptions {
   cellStyle?: CellStyleFn
   /** Optional click handler for cell popups. */
   onCellClick?: (token: string, lat: number, lng: number) => void
+  /** Called after polygons are (re)drawn. Use to re-order other layers. */
+  onUpdated?: () => void
 }
 
 // --- Layer ---
@@ -115,6 +117,7 @@ export class S2GridLayer {
   /** Compute cells for current bounds and draw polygons. */
   update(): void {
     if (this.destroyed) return
+    const perfStart = import.meta.env.DEV ? performance.now() : 0
 
     const zoom = this.map.getZoom()
     const gating = shouldShowGrid({
@@ -144,6 +147,16 @@ export class S2GridLayer {
 
     const { tokens, truncated } = cellsCoveringBounds(b, this.opts.level, this.opts.maxCells)
 
+    // Show "Grid partial" hint when the cell count is capped
+    if (this.hintEl) {
+      if (truncated) {
+        this.hintEl.textContent = 'Grid partial – zoom in'
+        this.hintEl.style.display = 'block'
+      } else {
+        this.hintEl.style.display = 'none'
+      }
+    }
+
     this.clearPolygons()
 
     for (const token of tokens) {
@@ -169,6 +182,7 @@ export class S2GridLayer {
       }
 
       const poly = L.polygon(latlngs, polyOpts)
+      ;(poly as L.Polygon & { _s2Token?: string })._s2Token = token
 
       if (this.opts.onCellClick) {
         poly.on('click', (e: L.LeafletMouseEvent) => {
@@ -181,6 +195,49 @@ export class S2GridLayer {
 
     // If truncated, we could show a subtle indicator, but for now just cap
     void truncated
+
+    // Notify that polygons were redrawn (e.g. to bring POI markers to front)
+    this.opts.onUpdated?.()
+
+    if (import.meta.env.DEV) {
+      const ms = performance.now() - perfStart
+      console.debug(`[perf] S${this.opts.level} update ${ms.toFixed(1)}ms cells=${tokens.length}`)
+    }
+  }
+
+  /**
+   * Update the cell style function and re-apply styles to existing polygons
+   * without recomputing S2 coverage or recreating polygons.
+   */
+  setCellStyle(fn: CellStyleFn | undefined): void {
+    this.opts.cellStyle = fn
+    this.refreshStyles()
+  }
+
+  /**
+   * Re-apply the current cell style to all existing polygons.
+   * Does NOT recalculate S2 coverage, recreate polygons, or touch the vertex cache.
+   */
+  refreshStyles(): void {
+    const fn = this.opts.cellStyle
+    if (!fn) return
+    this.layerGroup.eachLayer((layer) => {
+      if (layer instanceof L.Polygon) {
+        const token = (layer as L.Polygon & { _s2Token?: string })._s2Token
+        if (token) {
+          const style = fn(token) ?? null
+          const polyOpts: L.PathOptions = {
+            color: style?.color ?? this.opts.color,
+            weight: style?.weight ?? this.opts.weight,
+            dashArray: style?.dashArray,
+            fill: style !== null,
+            fillColor: style?.fillColor ?? this.opts.color,
+            fillOpacity: style?.fillOpacity ?? 0
+          }
+          layer.setStyle(polyOpts)
+        }
+      }
+    })
   }
 
   private clearPolygons(): void {

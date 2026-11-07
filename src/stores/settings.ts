@@ -22,6 +22,7 @@ export interface SettingsState {
   satelliteView: boolean
   fieldMode: boolean
   followPosition: boolean
+  showPoiImages: boolean
 }
 
 function loadFromStorage(): Partial<SettingsState> {
@@ -63,7 +64,8 @@ export const useSettingsStore = defineStore('settings', {
       showS14Stats: saved.showS14Stats ?? false,
       satelliteView: saved.satelliteView ?? false,
       fieldMode: saved.fieldMode ?? false,
-      followPosition: saved.followPosition ?? false
+      followPosition: saved.followPosition ?? false,
+      showPoiImages: saved.showPoiImages ?? true
     }
   },
   actions: {
@@ -138,6 +140,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleFollowPosition(): void {
       this.followPosition = !this.followPosition
+      persist(this.$state)
+    },
+    toggleShowPoiImages(): void {
+      this.showPoiImages = !this.showPoiImages
       persist(this.$state)
     }
   }

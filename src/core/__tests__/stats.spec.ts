@@ -30,15 +30,15 @@ function makePoi(lat: number, lng: number, game: ParsedPoi['game'] = []): Parsed
 }
 
 function activeStop(): ParsedPoi['game'][number] {
-  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function activeGym(): ParsedPoi['game'][number] {
-  return { entity: 'GYM', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'GYM', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function activePowerSpot(): ParsedPoi['game'][number] {
-  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'POKEMON' }
+  return { entity: 'POWERSPOT', status: 'ACTIVE', brand: 'HOLOHOLO' }
 }
 
 function makeCell(token: string, truncated = false): ParsedCell {

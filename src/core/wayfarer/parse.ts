@@ -1,10 +1,24 @@
 /**
  * Wayfarer export parser — tolerant, no dependencies.
- * Accepts: full response ({result:{data:[...]}}), just result ({data:[...]}),
- * or the direct array of cells.
+ *
+ * Accepts: the full API response ({result:{data:[...]}}), just `result`
+ * ({data:[...]}), or the bare array of cells.
+ *
+ * Real export shape (verified against a real response, Nov 2026):
+ *  - Cells with data:  { metadata: { s2CellId, s2CellLevel, count, generatedTimestamp (string, ms) }, pois, cellId }
+ *  - Cells with NO POIs: { cellId, pois: [] } — NO `metadata` at all. They still mean
+ *    "this S14 cell was queried and is empty" => every S17 inside is free.
+ *  - `snapshot` ("YYYY-MM-DD") and `cellLevel` live on `result`, not on each cell.
+ *  - POI image is `mainImage`; the game brand is `gmo[].gameBrand` (value "HOLOHOLO").
+ *
+ * Legacy names (`imageUrl`, `gmo[].brand`) are still accepted so old fixtures/backups work.
+ * Never throws: invalid pieces produce warnings.
  */
 
-// --- Output types ---
+/** A cell with count >= this value may have been cut off by the API. */
+export const TRUNCATION_THRESHOLD = 50
+
+// --- Output types (unchanged public shape) ---
 
 export interface ParsedGameObject {
   entity: string
@@ -19,6 +33,7 @@ export interface ParsedPoi {
   title: string
   description: string
   address: string
+  /** Raw `mainImage` URL as exported. Sanitize with `stablePoiImageUrl` before display. */
   imageUrl: string
   communityContributed: boolean
   game: ParsedGameObject[]
@@ -29,7 +44,9 @@ export interface ParsedCell {
   token: string
   count: number
   truncated: boolean
+  /** Epoch milliseconds (as exported), or null when unknown. */
   generatedTimestamp: number | null
+  /** Epoch milliseconds of the snapshot date, or null when unknown. */
   snapshot: number | null
   level: number | null
 }
@@ -40,197 +57,172 @@ export interface ParseResult {
   warnings: string[]
 }
 
-// --- Type guards (hand-written, no dependencies) ---
+// --- Type guards / coercion (hand-written, no dependencies) ---
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-function isString(v: unknown): v is string {
-  return typeof v === 'string'
+function str(v: unknown): string {
+  return typeof v === 'string' ? v : ''
 }
 
-function isNumber(v: unknown): v is number {
-  return typeof v === 'number' && isFinite(v)
+/** number or numeric string -> number; anything else -> null. */
+function num(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  return null
 }
 
-function isBoolean(v: unknown): v is boolean {
-  return typeof v === 'boolean'
+/** number | numeric string | date string ("2026-11-06") -> epoch value; else null. */
+function toMillis(v: unknown): number | null {
+  const n = num(v)
+  if (n !== null) return n
+  if (typeof v === 'string') {
+    const t = Date.parse(v)
+    return Number.isNaN(t) ? null : t
+  }
+  return null
 }
 
-// --- Internal raw types (what the JSON actually looks like) ---
+// --- Unwrap ---
 
-interface RawGmo {
-  entity?: unknown
-  status?: unknown
-  brand?: unknown
+interface Unwrapped {
+  data: unknown[] | null
+  snapshot: unknown
+  cellLevel: unknown
 }
 
-interface RawPoi {
-  poiId?: unknown
-  latE6?: unknown
-  lngE6?: unknown
-  title?: unknown
-  description?: unknown
-  address?: unknown
-  imageUrl?: unknown
-  isCommunityContributed?: unknown
-  gmo?: unknown
+function unwrap(input: unknown): Unwrapped {
+  if (Array.isArray(input)) return { data: input, snapshot: undefined, cellLevel: undefined }
+  if (!isRecord(input)) return { data: null, snapshot: undefined, cellLevel: undefined }
+  const root = isRecord(input.result) ? input.result : input
+  return {
+    data: Array.isArray(root.data) ? root.data : null,
+    snapshot: root.snapshot,
+    cellLevel: root.cellLevel
+  }
 }
 
-interface RawMetadata {
-  s2CellId?: unknown
-  count?: unknown
-  s2CellLevel?: unknown
-  generatedTimestamp?: unknown
-  snapshot?: unknown
-}
+// --- POI ---
 
-interface RawCell {
-  metadata?: unknown
-  pois?: unknown
-}
-
-// --- Parser ---
-
-/**
- * Parse a Wayfarer export. Accepts the full API response, just the `result`
- * object, or the bare array of cells. Returns structured data + warnings.
- * Never throws — invalid fields produce warnings.
- */
-export function parseWayfarer(input: unknown): ParseResult {
-  const warnings: string[] = []
-  let cellsRaw: RawCell[]
-
-  // Unwrap: {result:{data:[...]}} → {data:[...]} → [...]
-  if (isRecord(input) && isRecord(input.result)) {
-    const result = input.result as Record<string, unknown>
-    if (Array.isArray(result.data)) {
-      cellsRaw = result.data as RawCell[]
-    } else {
-      warnings.push('result.data is not an array — no cells found')
-      return { cells: [], pois: [], warnings }
-    }
-  } else if (isRecord(input) && Array.isArray(input.data)) {
-    cellsRaw = input.data as RawCell[]
-  } else if (Array.isArray(input)) {
-    cellsRaw = input as RawCell[]
-  } else {
-    warnings.push(
-      'Unrecognized input format — expected {result:{data:[...]}}, {data:[...]}, or [...]'
-    )
-    return { cells: [], pois: [], warnings }
+function parsePoi(
+  raw: unknown,
+  cellToken: string,
+  label: string,
+  warnings: string[]
+): ParsedPoi | null {
+  if (!isRecord(raw)) {
+    warnings.push(`${label}: POI is not an object, skipped.`)
+    return null
+  }
+  const id = str(raw.poiId).trim()
+  if (!id) {
+    warnings.push(`${label}: POI without poiId, skipped.`)
+    return null
+  }
+  const latE6 = num(raw.latE6)
+  const lngE6 = num(raw.lngE6)
+  if (latE6 === null || lngE6 === null) {
+    warnings.push(`${label} (${id}): POI without valid latE6/lngE6, skipped.`)
+    return null
+  }
+  const lat = latE6 / 1e6
+  const lng = lngE6 / 1e6
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    warnings.push(`${label} (${id}): coordinates out of range, skipped.`)
+    return null
   }
 
-  const cells: ParsedCell[] = []
-  const pois: ParsedPoi[] = []
-
-  for (let ci = 0; ci < cellsRaw.length; ci++) {
-    const rawCell = cellsRaw[ci]
-    if (!isRecord(rawCell)) {
-      warnings.push(`Cell ${ci}: not an object, skipped`)
-      continue
-    }
-
-    // --- metadata ---
-    let count = 0
-    let level: number | null = null
-    let generatedTimestamp: number | null = null
-    let snapshot: number | null = null
-    let token: string
-
-    if (isRecord(rawCell.metadata)) {
-      const meta = rawCell.metadata as RawMetadata
-      if (isString(meta.s2CellId)) {
-        token = meta.s2CellId
-      } else {
-        warnings.push(`Cell ${ci}: missing or invalid metadata.s2CellId, skipped`)
-        continue
-      }
-      if (isNumber(meta.count)) {
-        count = meta.count
-      }
-      if (isNumber(meta.s2CellLevel)) {
-        level = meta.s2CellLevel
-      }
-      if (isNumber(meta.generatedTimestamp)) {
-        generatedTimestamp = meta.generatedTimestamp
-      }
-      if (isNumber(meta.snapshot)) {
-        snapshot = meta.snapshot
-      }
-    } else {
-      warnings.push(`Cell ${ci}: missing metadata, skipped`)
-      continue
-    }
-
-    cells.push({
-      token,
-      count,
-      truncated: count >= 50,
-      generatedTimestamp,
-      snapshot,
-      level
-    })
-
-    // --- pois ---
-    const rawPois = rawCell.pois
-    if (!Array.isArray(rawPois)) {
-      continue // no pois, that's fine
-    }
-
-    for (let pi = 0; pi < rawPois.length; pi++) {
-      const rawPoi = rawPois[pi]
-      if (!isRecord(rawPoi)) {
-        warnings.push(`Cell ${ci}, POI ${pi}: not an object, skipped`)
-        continue
-      }
-
-      const rp = rawPoi as RawPoi
-
-      // id
-      if (!isString(rp.poiId) || rp.poiId.length === 0) {
-        warnings.push(`Cell ${ci}, POI ${pi}: missing poiId, skipped`)
-        continue
-      }
-
-      // coordinates
-      if (!isNumber(rp.latE6) || !isNumber(rp.lngE6)) {
-        warnings.push(`Cell ${ci}, POI ${pi} (${rp.poiId}): missing coordinates, skipped`)
-        continue
-      }
-
-      // gmo
-      const game: ParsedGameObject[] = []
-      if (Array.isArray(rp.gmo)) {
-        for (const g of rp.gmo) {
-          if (isRecord(g)) {
-            const rg = g as RawGmo
-            game.push({
-              entity: isString(rg.entity) ? rg.entity : '',
-              status: isString(rg.status) ? rg.status : '',
-              brand: isString(rg.brand) ? rg.brand : ''
-            })
-          }
-        }
-      }
-
-      pois.push({
-        id: rp.poiId,
-        lat: rp.latE6 / 1e6,
-        lng: rp.lngE6 / 1e6,
-        title: isString(rp.title) ? rp.title : '',
-        description: isString(rp.description) ? rp.description : '',
-        address: isString(rp.address) ? rp.address : '',
-        imageUrl: isString(rp.imageUrl) ? rp.imageUrl : '',
-        communityContributed: isBoolean(rp.isCommunityContributed)
-          ? rp.isCommunityContributed
-          : false,
-        game,
-        cellToken: token
+  const game: ParsedGameObject[] = []
+  if (Array.isArray(raw.gmo)) {
+    for (const g of raw.gmo) {
+      if (!isRecord(g)) continue
+      game.push({
+        entity: str(g.entity).trim(),
+        status: str(g.status).trim(),
+        // Real exports use `gameBrand`; `brand` is the legacy/invented name.
+        brand: (str(g.gameBrand) || str(g.brand)).trim()
       })
     }
   }
 
-  return { cells, pois, warnings }
+  return {
+    id,
+    lat,
+    lng,
+    title: str(raw.title),
+    description: str(raw.description),
+    address: str(raw.address),
+    // Real exports use `mainImage`; `imageUrl` is the legacy/invented name.
+    imageUrl: str(raw.mainImage) || str(raw.imageUrl),
+    communityContributed: raw.isCommunityContributed === true,
+    game,
+    cellToken
+  }
+}
+
+// --- Parser ---
+
+export function parseWayfarer(input: unknown): ParseResult {
+  const warnings: string[] = []
+  const { data, snapshot, cellLevel } = unwrap(input)
+
+  if (!data) {
+    warnings.push('No cell array found (expected result.data[], data[] or a bare array).')
+    return { cells: [], pois: [], warnings }
+  }
+
+  const rootSnapshot = toMillis(snapshot)
+  const rootLevel = num(cellLevel)
+  const cells = new Map<string, ParsedCell>()
+  const pois = new Map<string, ParsedPoi>()
+  let duplicatePois = 0
+
+  data.forEach((raw, index) => {
+    if (!isRecord(raw)) {
+      warnings.push(`Cell #${index}: not an object, skipped.`)
+      return
+    }
+    const meta = isRecord(raw.metadata) ? raw.metadata : {}
+    // Cells without metadata (empty cells) only have the top-level `cellId`.
+    const token = (str(meta.s2CellId) || str(raw.cellId)).trim().toLowerCase()
+    if (!token) {
+      warnings.push(`Cell #${index}: no s2CellId/cellId, skipped.`)
+      return
+    }
+
+    const rawPois = Array.isArray(raw.pois) ? raw.pois : []
+    let valid = 0
+    rawPois.forEach((p, i) => {
+      const poi = parsePoi(p, token, `${token}[${i}]`, warnings)
+      if (!poi) return
+      valid++
+      if (pois.has(poi.id)) duplicatePois++
+      pois.set(poi.id, poi)
+    })
+
+    const count = Math.max(num(meta.count) ?? 0, valid)
+    const cell: ParsedCell = {
+      token,
+      count,
+      truncated: count >= TRUNCATION_THRESHOLD,
+      generatedTimestamp: toMillis(meta.generatedTimestamp),
+      snapshot: toMillis(meta.snapshot) ?? rootSnapshot,
+      level: num(meta.s2CellLevel) ?? rootLevel
+    }
+    const prev = cells.get(token)
+    if (!prev || (cell.generatedTimestamp ?? 0) >= (prev.generatedTimestamp ?? 0)) {
+      cells.set(token, cell)
+    }
+  })
+
+  if (duplicatePois > 0) {
+    warnings.push(`${duplicatePois} duplicate poiId(s) in the same import; last one kept.`)
+  }
+
+  return { cells: [...cells.values()], pois: [...pois.values()], warnings }
 }

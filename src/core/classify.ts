@@ -4,6 +4,7 @@
  */
 import type { ParsedPoi } from './wayfarer/parse'
 import { cellTokenAt, parentToken } from './s2'
+import type { PoiIndex } from './poiIndex'
 
 export type PoiKind = 'stop' | 'gym' | 'powerspot' | 'other'
 
@@ -11,12 +12,12 @@ export type PoiKind = 'stop' | 'gym' | 'powerspot' | 'other'
  * Brand used by real Wayfarer exports for Pokémon game objects.
  * Matching is case-insensitive and configurable via `ClassifyOptions.activeBrand`.
  */
-export const DEFAULT_ACTIVE_BRAND = 'POKEMON'
+export const DEFAULT_ACTIVE_BRAND = 'HOLOHOLO'
 
 export interface ClassifyOptions {
   /** Whether POWERSPOT counts as occupied. Default: false. */
   powerspotCounts: boolean
-  /** Active game brand to match (case-insensitive). Default: 'POKEMON'. */
+  /** Active game brand to match (case-insensitive). Default: 'HOLOHOLO'. */
   activeBrand: string
 }
 
@@ -69,6 +70,21 @@ export function poiOccupies(
 
 export type CellState = 'occupied' | 'free' | 'free-uncertain' | 'unknown'
 
+/** Group POIs by S17 cell token (used when no pre-computed index is provided). */
+function groupPoisByS17(pois: ParsedPoi[]): Map<string, ParsedPoi[]> {
+  const m = new Map<string, ParsedPoi[]>()
+  for (const poi of pois) {
+    const s17 = cellTokenAt(poi.lat, poi.lng, 17)
+    const arr = m.get(s17)
+    if (arr) {
+      arr.push(poi)
+    } else {
+      m.set(s17, [poi])
+    }
+  }
+  return m
+}
+
 /**
  * Classify S17 cells as occupied / free / unknown.
  *
@@ -82,21 +98,13 @@ export function classifyS17(
   pois: ParsedPoi[],
   coveredS14Tokens: Set<string>,
   truncatedS14Tokens: Set<string>,
-  opts: ClassifyOptions = DEFAULT_CLASSIFY_OPTS
+  opts: ClassifyOptions = DEFAULT_CLASSIFY_OPTS,
+  index?: PoiIndex
 ): Map<string, CellState> {
   const result = new Map<string, CellState>()
 
-  // Group POIs by S17 cell
-  const poisByS17 = new Map<string, ParsedPoi[]>()
-  for (const poi of pois) {
-    const s17 = cellTokenAt(poi.lat, poi.lng, 17)
-    const arr = poisByS17.get(s17)
-    if (arr) {
-      arr.push(poi)
-    } else {
-      poisByS17.set(s17, [poi])
-    }
-  }
+  // Use pre-computed index if provided, otherwise group POIs by S17 cell
+  const poisByS17 = index?.poisByS17 ?? groupPoisByS17(pois)
 
   // For each S17 cell that has POIs, determine state
   for (const [s17Token, cellPois] of poisByS17) {

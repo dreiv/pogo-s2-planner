@@ -35,7 +35,8 @@ function makeSettings(): ExportedSettings {
     rangeCenter: [45.71, 21.31],
     showRangeRings: false,
     showS14Stats: true,
-    satelliteView: false
+    satelliteView: false,
+    showPoiImages: true
   }
 }
 
@@ -205,5 +206,35 @@ describe('parseBackup', () => {
     expect(result.ok).toBe(true)
     expect(result.marks[0]!.note).toBe('my note')
     expect(result.marks[0]!.updatedAt).toBe(12345)
+  })
+
+  it('old backup without showPoiImages defaults to true', () => {
+    const file: BackupFile = {
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 0,
+      marks: [],
+      settings: {
+        center: [45.7, 21.3],
+        zoom: 13,
+        showS14: false,
+        showS17: false,
+        s14MinZoom: 12,
+        s17MinZoom: 16,
+        showPois: true,
+        showOtherPois: true,
+        stopGymOnly: false,
+        powerspotCounts: false,
+        showRange: false,
+        rangeRadius: 80,
+        rangeCenter: null,
+        showRangeRings: false,
+        showS14Stats: false,
+        satelliteView: false
+        // showPoiImages intentionally omitted (old backup)
+      } as unknown as ExportedSettings
+    }
+    const result = parseBackup(file)
+    expect(result.ok).toBe(true)
+    expect(result.settings.showPoiImages).toBe(true)
   })
 })

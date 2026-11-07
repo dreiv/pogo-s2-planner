@@ -133,6 +133,10 @@ const s14Legend: LegendItem[] = [
             <input type="checkbox" :checked="settings.powerspotCounts" @change="settings.togglePowerspotCounts()" />
             <span>Powerspot = occupied</span>
           </label>
+          <label class="toggle-row">
+            <input type="checkbox" :checked="settings.showPoiImages" @change="settings.toggleShowPoiImages()" />
+            <span>Show POI photos</span>
+          </label>
         </section>
         <section class="panel-section">
           <h3>Field</h3>

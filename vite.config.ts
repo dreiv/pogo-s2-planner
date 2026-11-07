@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Pogo S2 Planner',
         short_name: 'S2 Planner',
         description: 'Grile S2 (14/17) + ocupare Pokéstop/Gym din export Wayfarer',
-        lang: 'ro',
+        lang: 'en',
         start_url: '.',
         display: 'standalone',
         background_color: '#111827',
@@ -32,6 +32,8 @@ export default defineConfig({
       workbox: {
         // Cache ONLY the app shell (JS/CSS/HTML). Never cache OSM tiles
         // (OSM tile policy) or any data endpoints.
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.js', '**/*.css', '**/*.html'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/tiles\//, /^\/data\//],

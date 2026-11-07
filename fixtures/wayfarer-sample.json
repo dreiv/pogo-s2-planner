@@ -1,13 +1,13 @@
 {
   "result": {
+    "snapshot": "2026-11-06",
     "data": [
       {
         "metadata": {
           "s2CellId": "47456785",
           "count": 12,
           "s2CellLevel": 14,
-          "generatedTimestamp": 1700000000,
-          "snapshot": 1700000000
+          "generatedTimestamp": 1700000000
         },
         "pois": [
           {
@@ -17,9 +17,9 @@
             "title": "Stop Alpha",
             "description": "A test pokestop.",
             "address": "Test Street 1",
-            "imageUrl": "https://example.com/img1.png",
+            "mainImage": "https://example.com/img1.png",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-002",
@@ -28,9 +28,9 @@
             "title": "Gym Beta",
             "description": "A test gym.",
             "address": "Test Street 2",
-            "imageUrl": "https://example.com/img2.png",
+            "mainImage": "https://example.com/img2.png",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-003",
@@ -39,9 +39,9 @@
             "title": "PowerSpot Gamma",
             "description": "A test power spot.",
             "address": "Test Street 3",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": true,
-            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-004",
@@ -50,7 +50,7 @@
             "title": "No GMO Delta",
             "description": "A POI without game objects.",
             "address": "Test Street 4",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
             "gmo": []
           },
@@ -61,9 +61,9 @@
             "title": "Inactive Stop Epsilon",
             "description": "An inactive pokestop.",
             "address": "Test Street 5",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "POKESTOP", "status": "INACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POKESTOP", "status": "INACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-006",
@@ -72,11 +72,11 @@
             "title": "Multi GMO Zeta",
             "description": "A POI with multiple game objects.",
             "address": "Test Street 6",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
             "gmo": [
-              { "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" },
-              { "entity": "GYM", "status": "INACTIVE", "brand": "HOLOHOLO" }
+              { "entity": "POKESTOP", "status": "ACTIVE", "gameBrand": "HOLOHOLO" },
+              { "entity": "GYM", "status": "INACTIVE", "gameBrand": "HOLOHOLO" }
             ]
           }
         ]
@@ -86,8 +86,7 @@
           "s2CellId": "4745678d",
           "count": 50,
           "s2CellLevel": 14,
-          "generatedTimestamp": 1700000000,
-          "snapshot": 1700000000
+          "generatedTimestamp": 1700000000
         },
         "pois": [
           {
@@ -97,9 +96,9 @@
             "title": "Stop Eta",
             "description": "Another stop.",
             "address": "Test Street 7",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-008",
@@ -108,9 +107,9 @@
             "title": "Gym Theta",
             "description": "Another gym.",
             "address": "Test Street 8",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-009",
@@ -119,7 +118,7 @@
             "title": "No GMO Iota",
             "description": "No game objects.",
             "address": "Test Street 9",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": true,
             "gmo": []
           },
@@ -130,9 +129,9 @@
             "title": "PowerSpot Kappa",
             "description": "Another power spot.",
             "address": "Test Street 10",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-011",
@@ -141,9 +140,9 @@
             "title": "Stop Lambda",
             "description": "Yet another stop.",
             "address": "Test Street 11",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           },
           {
             "poiId": "poi-012",
@@ -152,9 +151,9 @@
             "title": "Gym Mu",
             "description": "Yet another gym.",
             "address": "Test Street 12",
-            "imageUrl": "",
+            "mainImage": "",
             "isCommunityContributed": false,
-            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "gameBrand": "HOLOHOLO" }]
           }
         ]
       }

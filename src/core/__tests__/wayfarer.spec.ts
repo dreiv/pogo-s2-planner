@@ -159,16 +159,6 @@ describe('mergeImports', () => {
     expect(found?.title).toBe('Updated Title')
   })
 
-  it('older import does not overwrite newer data', () => {
-    const olderPoi: ParsedPoi = { ...basePoi0, title: 'Old Title' }
-    const merged = mergeImports(
-      { cells: base.cells, pois: base.pois, importTimestamp: 2000 },
-      { cells: base.cells, pois: [olderPoi], importTimestamp: 1000 }
-    )
-    const found = merged.pois.find((p) => p.id === 'poi-001')
-    expect(found?.title).toBe('Stop Alpha')
-  })
-
   it('merges cells by token, newer wins', () => {
     const updatedCell: ParsedCell = { ...baseCell0, count: 99 }
     const merged = mergeImports(

@@ -1,23 +1,40 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useDatasetStore, type ImportSummary } from '../stores/dataset'
+import { splitJsonDocuments } from '../core/wayfarer/split'
 
 const dataset = useDatasetStore()
 const pasteText = ref('')
 const lastSummary = ref<ImportSummary | null>(null)
 const importing = ref(false)
+const errors = ref<string[]>([])
 
 async function handleFileUpload(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = input.files
+  if (!files || files.length === 0) return
   importing.value = true
+  errors.value = []
   try {
-    const text = await file.text()
-    const json = JSON.parse(text)
-    lastSummary.value = await dataset.importFromJson(json, file.name)
+    const docs: { name: string; json: unknown }[] = []
+    for (const file of Array.from(files)) {
+      const text = await file.text()
+      const { docs: parsed, errors: splitErrors } = splitJsonDocuments(text)
+      if (splitErrors.length > 0) {
+        errors.value.push(...splitErrors.map((err) => `${file.name}: ${err}`))
+      }
+      for (const doc of parsed) {
+        docs.push({ name: file.name, json: doc })
+      }
+    }
+    if (docs.length > 0) {
+      lastSummary.value = await dataset.importDocuments(docs)
+    } else {
+      lastSummary.value = null
+    }
   } catch (err) {
     lastSummary.value = null
+    errors.value.push(String(err))
     console.error('Import failed:', err)
   } finally {
     importing.value = false
@@ -28,12 +45,22 @@ async function handleFileUpload(e: Event): Promise<void> {
 async function handlePaste(): Promise<void> {
   if (!pasteText.value.trim()) return
   importing.value = true
+  errors.value = []
   try {
-    const json = JSON.parse(pasteText.value)
-    lastSummary.value = await dataset.importFromJson(json, 'pasted')
-    pasteText.value = ''
+    const { docs, errors: splitErrors } = splitJsonDocuments(pasteText.value)
+    if (splitErrors.length > 0) {
+      errors.value.push(...splitErrors)
+    }
+    if (docs.length > 0) {
+      const docsNamed = docs.map((json) => ({ name: 'pasted', json }))
+      lastSummary.value = await dataset.importDocuments(docsNamed)
+      pasteText.value = ''
+    } else {
+      lastSummary.value = null
+    }
   } catch (err) {
     lastSummary.value = null
+    errors.value.push(String(err))
     console.error('Import failed:', err)
   } finally {
     importing.value = false
@@ -44,6 +71,7 @@ async function handleClear(): Promise<void> {
   if (!confirm('Delete all imported data?')) return
   await dataset.clearAll()
   lastSummary.value = null
+  errors.value = []
 }
 </script>
 
@@ -53,8 +81,10 @@ async function handleClear(): Promise<void> {
 
     <div class="import-actions">
       <label class="file-btn">
-        <input type="file" accept=".json" :disabled="importing" @change="handleFileUpload" />
-        <span>📂 JSON file</span>
+        <input
+type="file" accept=".json,.txt,application/json" multiple :disabled="importing"
+          @change="handleFileUpload" />
+        <span>📂 JSON file(s)</span>
       </label>
     </div>
 
@@ -65,9 +95,25 @@ v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows=
       {{ importing ? 'Importing…' : 'Import from text' }}
     </button>
 
+    <!-- Errors -->
+    <div v-if="errors.length > 0" class="errors">
+      <h4>Errors</h4>
+      <ul>
+        <li v-for="(err, i) in errors" :key="i">{{ err }}</li>
+      </ul>
+    </div>
+
     <!-- Summary -->
     <div v-if="lastSummary" class="summary">
       <h4>Import summary</h4>
+      <p class="summary-line">
+        +{{ lastSummary.poisAdded }} new, {{ lastSummary.poisUpdated }} updated,
+        {{ lastSummary.poisRemoved }} removed, {{ lastSummary.poisUnchanged }} unchanged
+        · cells +{{ lastSummary.cellsAdded }}
+      </p>
+      <p v-if="lastSummary.documents > 1" class="summary-line">
+        {{ lastSummary.documents }} documents merged
+      </p>
       <dl>
         <dt>POIs</dt>
         <dd>{{ lastSummary.poiCount }}</dd>
@@ -144,6 +190,33 @@ v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows=
   resize: vertical;
   margin-bottom: 8px;
   background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.errors {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(220, 50, 50, 0.1);
+  border: 1px solid rgba(220, 50, 50, 0.3);
+  border-radius: 4px;
+}
+
+.errors h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #e05050;
+}
+
+.errors ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #e05050;
+}
+
+.summary-line {
+  font-size: 12px;
+  margin: 0 0 4px;
   color: var(--text-primary);
 }
 

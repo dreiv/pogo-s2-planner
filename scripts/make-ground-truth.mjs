@@ -12,7 +12,7 @@ if (!Array.isArray(cells)) throw new Error('Unexpected format: expected result.d
 const PER_CELL = 5
 const points = []
 for (const cell of cells) {
-  const token = cell?.metadata?.s2CellId
+  const token = cell?.metadata?.s2CellId || cell?.cellId
   if (!token) continue
   const pois = (cell.pois ?? []).filter((p) => Number.isFinite(p.latE6) && Number.isFinite(p.lngE6))
   // spread picks across the list instead of taking the first N

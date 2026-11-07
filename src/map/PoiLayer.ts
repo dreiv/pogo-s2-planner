@@ -7,6 +7,7 @@ import L from 'leaflet'
 import type { ParsedPoi } from '../core/wayfarer/parse'
 import { poiKind, type PoiKind } from '../core/classify'
 import { POI_COLORS } from '../theme'
+import { buildPoiPopupContent } from './poiPopup'
 
 export interface PoiLayerOptions {
   /** Minimum zoom to show all POI kinds. Below this, only stop/gym. */
@@ -15,12 +16,15 @@ export interface PoiLayerOptions {
   showOther: boolean
   /** Whether to show only stop/gym (hide powerspot and other). */
   stopGymOnly: boolean
+  /** Whether to show POI photos in popups. */
+  showImages: boolean
 }
 
 export const DEFAULT_POI_LAYER_OPTS: PoiLayerOptions = {
   fullDetailZoom: 16,
   showOther: true,
-  stopGymOnly: false
+  stopGymOnly: false,
+  showImages: true
 }
 
 const KIND_RADIUS: Record<PoiKind, number> = {
@@ -37,25 +41,14 @@ function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolea
   return true
 }
 
-function buildPopupHtml(poi: ParsedPoi, kind: PoiKind): string {
-  const parts: string[] = []
-  if (poi.title) parts.push(`<strong>${escapeHtml(poi.title)}</strong>`)
-  if (poi.description) parts.push(`<p>${escapeHtml(poi.description)}</p>`)
-  if (poi.address) parts.push(`<small>${escapeHtml(poi.address)}</small>`)
-  parts.push(`<em>${kind}</em>`)
-  return parts.join('\n')
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
 export class PoiLayer {
   private group: L.LayerGroup
   private pois: ParsedPoi[] = []
   private opts: PoiLayerOptions
   private markers = new Map<string, L.CircleMarker>()
   private currentZoom = 12
+  /** Read-only counter: incremented each time markers are (re)built. For tests. */
+  rebuildCount = 0
 
   constructor(map: L.Map, opts: Partial<PoiLayerOptions> = {}) {
     this.opts = { ...DEFAULT_POI_LAYER_OPTS, ...opts }
@@ -74,12 +67,23 @@ export class PoiLayer {
     this.rebuild()
   }
 
+  /**
+   * Bring all markers to the front of the canvas draw order.
+   * Needed after S2GridLayer redraws polygons (which appends them on top).
+   */
+  bringToFront(): void {
+    for (const marker of this.markers.values()) {
+      marker.bringToFront()
+    }
+  }
+
   setOptions(opts: Partial<PoiLayerOptions>): void {
     this.opts = { ...this.opts, ...opts }
     this.refreshVisibility()
   }
 
   private rebuild(): void {
+    this.rebuildCount++
     this.group.clearLayers()
     this.markers.clear()
 
@@ -94,14 +98,20 @@ export class PoiLayer {
         opacity: 1
       })
 
-      // Lazy popup: build HTML on open, load image only then
-      marker.bindPopup(() => {
-        let html = buildPopupHtml(poi, kind)
-        if (poi.imageUrl) {
-          html += `<br><img src="${poi.imageUrl}" style="max-width:200px;max-height:150px;border-radius:4px" loading="lazy">`
-        }
-        return html
-      })
+      // Lazy popup: build DOM on open, load image only then
+      marker.bindPopup(
+        () => {
+          const el = buildPoiPopupContent(poi, kind, {
+            showImages: this.opts.showImages,
+            onResize: () => {
+              const popup = marker.getPopup()
+              if (popup) popup.update()
+            }
+          })
+          return el
+        },
+        { maxWidth: 280 }
+      )
 
       this.markers.set(poi.id, marker)
       this.group.addLayer(marker)

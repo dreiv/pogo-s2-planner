@@ -7,12 +7,14 @@ import { db, type CellMark, type MarkStatus } from '../data/db'
 interface MarksState {
   marks: CellMark[]
   loaded: boolean
+  revision: number
 }
 
 export const useMarksStore = defineStore('marks', {
   state: (): MarksState => ({
     marks: [],
-    loaded: false
+    loaded: false,
+    revision: 0
   }),
 
   getters: {
@@ -41,6 +43,7 @@ export const useMarksStore = defineStore('marks', {
       if (this.loaded) return
       this.marks = await db.marks.toArray()
       this.loaded = true
+      this.revision++
     },
 
     async setMark(token17: string, status: MarkStatus, note: string): Promise<void> {
@@ -54,16 +57,19 @@ export const useMarksStore = defineStore('marks', {
       } else {
         this.marks.push(mark)
       }
+      this.revision++
     },
 
     async removeMark(token17: string): Promise<void> {
       await db.marks.delete(token17)
       this.marks = this.marks.filter((m) => m.token17 !== token17)
+      this.revision++
     },
 
     async clearAll(): Promise<void> {
       await db.marks.clear()
       this.marks = []
+      this.revision++
     },
 
     /** Bulk replace all marks (used by import). */
@@ -73,6 +79,7 @@ export const useMarksStore = defineStore('marks', {
         await db.marks.bulkPut(marks)
       })
       this.marks = marks
+      this.revision++
     }
   }
 })
