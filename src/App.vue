@@ -45,7 +45,8 @@ function onHighlightS14(token: string | null): void {
   <div id="app-root">
     <MapView ref="mapViewRef" @cell-selected="onCellSelected" />
     <aside class="side-panel" :class="{ open: panelOpen }" aria-label="Planner sidebar">
-      <button class="panel-toggle" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
+      <button
+        class="panel-toggle" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
         @click="panelOpen = !panelOpen">
         {{ panelOpen ? '✕' : '☰' }}
       </button>
