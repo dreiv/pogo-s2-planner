@@ -166,4 +166,42 @@ v-for="s in allStatuses" :key="s" class="status-btn"
   color: #6b7280;
   margin-top: 6px;
 }
+
+@media (prefers-color-scheme: dark) {
+  .marks-hint {
+    color: #9ca3af;
+  }
+
+  .token-label {
+    color: #9ca3af;
+  }
+
+  .status-btn {
+    background: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .status-btn:hover {
+    background: #374151;
+  }
+
+  .note-input {
+    background: #111827;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .remove-btn {
+    background: #1f2937;
+    color: #f87171;
+  }
+
+  .remove-btn:hover {
+    background: #374151;
+  }
+
+  .marks-count {
+    color: #9ca3af;
+  }
+}
 </style>

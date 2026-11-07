@@ -42,6 +42,13 @@ function onZoomToS14(token: string): void {
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <section class="panel-section">
+          <h3>Hartă</h3>
+          <label class="toggle-row">
+            <input type="checkbox" :checked="settings.satelliteView" @change="settings.toggleSatelliteView()" />
+            <span>Vedere satelit</span>
+          </label>
+        </section>
+        <section class="panel-section">
           <h3>Grile S2</h3>
           <label class="toggle-row">
             <input type="checkbox" :checked="settings.showS14" @change="settings.toggleS14()" />
@@ -252,6 +259,12 @@ body {
   background: #f3f4f6;
 }
 
+.leaflet-control-zoom a.leaflet-disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: default;
+}
+
 /* --- Dark theme (follows system) --- */
 @media (prefers-color-scheme: dark) {
   body {
@@ -281,6 +294,52 @@ body {
 
   .field-range-btn:hover {
     background: #4b5563;
+  }
+
+  .side-panel h2 {
+    color: #e5e7eb;
+  }
+
+  .toggle-row span {
+    color: #e5e7eb;
+  }
+
+  .legend-row span {
+    color: #d1d5db;
+  }
+
+  .placeholder {
+    color: #9ca3af;
+  }
+
+  /* Leaflet controls */
+  .leaflet-control-zoom a {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  .leaflet-control-zoom a:hover {
+    background: #374151;
+  }
+
+  .leaflet-control-zoom a.leaflet-disabled {
+    background: #374151;
+    color: #6b7280;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(31, 41, 55, 0.8);
+    color: #9ca3af;
+  }
+
+  .leaflet-control-attribution a {
+    color: #60a5fa;
+  }
+
+  .locate-btn {
+    background: #1f2937;
+    color: #e5e7eb;
   }
 }
 

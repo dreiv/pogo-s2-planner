@@ -30,10 +30,10 @@ const KIND_COLORS: Record<PoiKind, string> = {
 }
 
 const KIND_RADIUS: Record<PoiKind, number> = {
-  stop: 5,
-  gym: 6,
-  powerspot: 4,
-  other: 3
+  stop: 6,
+  gym: 7,
+  powerspot: 5,
+  other: 4
 }
 
 function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolean {
@@ -93,11 +93,11 @@ export class PoiLayer {
       const kind = poiKind(poi)
       const marker = L.circleMarker([poi.lat, poi.lng], {
         radius: KIND_RADIUS[kind],
-        color: KIND_COLORS[kind],
+        color: '#ffffff',
+        weight: 2,
         fillColor: KIND_COLORS[kind],
-        fillOpacity: 0.7,
-        weight: 1,
-        opacity: 0.9
+        fillOpacity: 1,
+        opacity: 1
       })
 
       // Lazy popup: build HTML on open, load image only then
@@ -122,7 +122,7 @@ export class PoiLayer {
       const kind = poiKind(poi)
       const visible = kindForZoom(kind, this.currentZoom, this.opts)
       if (visible) {
-        marker.setStyle({ opacity: 0.9, fillOpacity: 0.7 })
+        marker.setStyle({ opacity: 1, fillOpacity: 1 })
       } else {
         marker.setStyle({ opacity: 0, fillOpacity: 0 })
       }

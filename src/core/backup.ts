@@ -30,6 +30,7 @@ export interface ExportedSettings {
   rangeCenter: [number, number] | null
   showRangeRings: boolean
   showS14Stats: boolean
+  satelliteView: boolean
 }
 
 export interface ExportedDataset {
@@ -133,7 +134,8 @@ function defaultSettings(): ExportedSettings {
     rangeRadius: 80,
     rangeCenter: null,
     showRangeRings: false,
-    showS14Stats: false
+    showS14Stats: false,
+    satelliteView: false
   }
 }
 
@@ -170,7 +172,8 @@ function validateSettings(raw: unknown): ExportedSettings {
         ? [s.rangeCenter[0] as number, s.rangeCenter[1] as number]
         : null,
     showRangeRings: typeof s.showRangeRings === 'boolean' ? s.showRangeRings : def.showRangeRings,
-    showS14Stats: typeof s.showS14Stats === 'boolean' ? s.showS14Stats : def.showS14Stats
+    showS14Stats: typeof s.showS14Stats === 'boolean' ? s.showS14Stats : def.showS14Stats,
+    satelliteView: typeof s.satelliteView === 'boolean' ? s.satelliteView : def.satelliteView
   }
 }
 

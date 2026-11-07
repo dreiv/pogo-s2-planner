@@ -54,7 +54,8 @@ vi.mock('../map/createMap', () => ({
     remove: vi.fn(),
     getCenter: vi.fn(() => ({ lat: 44.4, lng: 26.1 })),
     getZoom: vi.fn(() => 13)
-  }))
+  })),
+  setBaseLayer: vi.fn()
 }))
 
 vi.mock('../map/locateMe', () => ({

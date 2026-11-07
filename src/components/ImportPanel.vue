@@ -198,9 +198,9 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 }
 
 .imports-list h4 {
-  margin: 0 0 4px;
   font-size: 12px;
   color: #666;
+  margin: 0 0 4px;
 }
 
 .imports-list ul {
@@ -211,17 +211,61 @@ v-model="pasteText" class="paste-area" placeholder="…sau lipește JSON aici" r
 
 .imports-list li {
   padding: 2px 0;
-  border-bottom: 1px solid #f3f4f6;
+  font-size: 11px;
 }
 
 .clear-btn {
   width: 100%;
   padding: 6px;
-  background: #ef4444;
-  color: #fff;
-  border: none;
+  font-size: 12px;
+  border: 1px solid #ef4444;
   border-radius: 4px;
+  background: #fff;
+  color: #ef4444;
   cursor: pointer;
-  font-size: 13px;
+}
+
+.clear-btn:hover {
+  background: #fef2f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .import-panel h3 {
+    color: #9ca3af;
+  }
+
+  .file-btn {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .paste-area {
+    background: #111827;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .summary {
+    background: #111827;
+  }
+
+  .summary h4,
+  .summary dt {
+    color: #9ca3af;
+  }
+
+  .imports-list h4 {
+    color: #9ca3af;
+  }
+
+  .clear-btn {
+    background: #1f2937;
+    color: #f87171;
+    border-color: #ef4444;
+  }
+
+  .clear-btn:hover {
+    background: #374151;
+  }
 }
 </style>

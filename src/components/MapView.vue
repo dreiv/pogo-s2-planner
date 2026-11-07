@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, provide, watch } from 'vue'
-import { createMap } from '../map/createMap'
+import { createMap, setBaseLayer } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
 import { startFieldMode } from '../map/fieldMode'
 import { MAP_CONTEXT_KEY, type MapContext } from '../map/MapContext'
@@ -249,6 +249,7 @@ onMounted(() => {
   map = createMap(containerRef.value, {
     center: settings.center,
     zoom: settings.zoom,
+    satellite: settings.satelliteView
   })
 
   // Provide map context for child layers
@@ -285,6 +286,14 @@ watch(
 watch(
   () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly] as const,
   () => syncPoiLayer()
+)
+
+// React to base map (OSM / satellite) toggle
+watch(
+  () => settings.satelliteView,
+  (satellite) => {
+    if (map) setBaseLayer(map, satellite)
+  }
 )
 
 // React to range settings
@@ -435,5 +444,16 @@ defineExpose({ zoomToS14, moveRangeToPosition })
 
 .locate-btn:hover {
   background: #f5f5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  .locate-btn {
+    background: #1f2937;
+    color: #e5e7eb;
+  }
+
+  .locate-btn:hover {
+    background: #374151;
+  }
 }
 </style>

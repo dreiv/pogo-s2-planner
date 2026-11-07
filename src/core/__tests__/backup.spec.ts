@@ -34,7 +34,8 @@ function makeSettings(): ExportedSettings {
     rangeRadius: 100,
     rangeCenter: [45.71, 21.31],
     showRangeRings: false,
-    showS14Stats: true
+    showS14Stats: true,
+    satelliteView: false
   }
 }
 

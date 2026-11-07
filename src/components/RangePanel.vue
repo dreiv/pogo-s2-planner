@@ -197,7 +197,7 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
   gap: 6px;
   font-size: 12px;
   padding: 3px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .poi-kind {
@@ -234,5 +234,41 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 .poi-dist {
   color: #666;
   flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .preset-btn {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .preset-btn.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+  }
+
+  .range-btn {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #4b5563;
+  }
+
+  .range-btn:hover {
+    background: #374151;
+  }
+
+  .range-hint {
+    color: #9ca3af;
+  }
+
+  .range-poi-item {
+    border-color: #374151;
+  }
+
+  .poi-dist {
+    color: #9ca3af;
+  }
 }
 </style>

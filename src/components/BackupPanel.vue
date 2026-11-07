@@ -29,7 +29,8 @@ function collectSettings(): ExportedSettings {
     rangeRadius: settings.rangeRadius,
     rangeCenter: settings.rangeCenter,
     showRangeRings: settings.showRangeRings,
-    showS14Stats: settings.showS14Stats
+    showS14Stats: settings.showS14Stats,
+    satelliteView: settings.satelliteView
   }
 }
 
@@ -119,6 +120,7 @@ async function importFromInput(e: Event): Promise<void> {
   settings.setRangeCenter(s.rangeCenter)
   settings.showRangeRings = s.showRangeRings
   settings.showS14Stats = s.showS14Stats
+  settings.satelliteView = s.satelliteView
 
   message.value = `Importat: ${result.marks.length} marcaj(e), setări restaurate.`
   error.value = ''
@@ -217,5 +219,39 @@ async function importFromInput(e: Event): Promise<void> {
   color: #6b7280;
   margin: 6px 0 0;
   line-height: 1.3;
+}
+
+@media (prefers-color-scheme: dark) {
+  .btn {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #3b82f6;
+  }
+
+  .btn:hover {
+    background: #1e40af;
+  }
+
+  .btn-warn {
+    background: #451a03;
+    color: #fbbf24;
+    border-color: #f59e0b;
+  }
+
+  .btn-warn:hover {
+    background: #78350f;
+  }
+
+  .msg {
+    color: #4ade80;
+  }
+
+  .msg.error {
+    color: #f87171;
+  }
+
+  .backup-note {
+    color: #9ca3af;
+  }
 }
 </style>

@@ -117,7 +117,7 @@ function onRowClick(s: S14Stats): void {
             <th class="sortable" @click="toggleSort('totalPoi')">Total{{ sortIndicator('totalPoi') }}</th>
             <th class="sortable" @click="toggleSort('expectedGyms')">Est.{{ sortIndicator('expectedGyms') }}</th>
             <th class="sortable" @click="toggleSort('poiToNextThreshold')">Lipsă{{ sortIndicator('poiToNextThreshold')
-            }}</th>
+              }}</th>
             <th class="sortable" @click="toggleSort('freeS17Count')">Libere{{ sortIndicator('freeS17Count') }}</th>
           </tr>
         </thead>
@@ -231,5 +231,47 @@ v-for="s in rows" :key="s.token" class="stats-row" :class="{ truncated: s.trunca
   color: #6b7280;
   margin: 4px 0 0;
   line-height: 1.3;
+}
+
+@media (prefers-color-scheme: dark) {
+  .filter-chip {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .stats-table-wrapper {
+    border-color: #374151;
+  }
+
+  .stats-table th {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  .stats-table th.sortable:hover {
+    background: #374151;
+  }
+
+  .stats-table td {
+    color: #e5e7eb;
+    border-color: #374151;
+  }
+
+  .stats-row:hover {
+    background: #1e3a5f;
+  }
+
+  .stats-row.truncated td {
+    color: #fbbf24;
+  }
+
+  .empty {
+    color: #6b7280;
+  }
+
+  .stats-note {
+    color: #9ca3af;
+  }
 }
 </style>
