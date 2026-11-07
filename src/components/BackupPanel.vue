@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CollapsibleSection from './CollapsibleSection.vue'
+import '../ui.css'
 import { ref } from 'vue'
 import { useMarksStore } from '../stores/marks'
 import { useSettingsStore } from '../stores/settings'
@@ -24,7 +26,6 @@ function collectSettings(): ExportedSettings {
     showPois: settings.showPois,
     showOtherPois: settings.showOtherPois,
     stopGymOnly: settings.stopGymOnly,
-    powerspotCounts: settings.powerspotCounts,
     showRange: settings.showRange,
     rangeRadius: settings.rangeRadius,
     rangeCenter: settings.rangeCenter,
@@ -114,7 +115,6 @@ async function importFromInput(e: Event): Promise<void> {
   settings.showPois = s.showPois
   settings.showOtherPois = s.showOtherPois
   settings.stopGymOnly = s.stopGymOnly
-  settings.powerspotCounts = s.powerspotCounts
   settings.showRange = s.showRange
   settings.setRangeRadius(s.rangeRadius)
   settings.setRangeCenter(s.rangeCenter)
@@ -130,54 +130,36 @@ async function importFromInput(e: Event): Promise<void> {
 </script>
 
 <template>
-  <section class="panel-section">
-    <h3>Backup / Export</h3>
-
+  <CollapsibleSection id="backup" title="Backup / export">
     <div class="backup-actions">
-      <button class="btn" @click="exportMarks">
-        ⬇ Export marks + settings
+      <button class="ui-btn ui-btn--block ui-btn--primary" @click="exportMarks">
+        <span aria-hidden="true">⬇</span> Export marks + settings (safe to share)
       </button>
-      <button class="btn btn-warn" @click="exportWithDataset">
-        ⬇ Export + dataset (⚠ personal)
+      <button class="ui-btn ui-btn--block btn-warn" @click="exportWithDataset">
+        <span aria-hidden="true">⬇</span> Export everything incl. Wayfarer data (private, do not commit)
       </button>
+      <label class="ui-btn ui-btn--block import-label">
+        <input type="file" accept="application/json,.json" @change="importFromInput" />
+        <span><span aria-hidden="true">⬆</span> Import backup file</span>
+      </label>
     </div>
 
-    <label class="import-label">
-      <span>⬆ Import backup</span>
-      <input type="file" accept="application/json,.json" @change="importFromInput" />
-    </label>
-
-    <p v-if="message" class="msg">{{ message }}</p>
-    <p v-if="error" class="msg error">{{ error }}</p>
+    <p v-if="message" class="msg" role="status">{{ message }}</p>
+    <p v-if="error" class="msg error" role="alert">{{ error }}</p>
 
     <p class="backup-note">
-      The default export does NOT include Wayfarer data. The second button also includes the
-      dataset (personal/Niantic data — do not commit it).
+      The first export has no Wayfarer data. The second one includes your Wayfarer (Niantic) data, which is personal.
+      Keep it out of version control.
     </p>
-  </section>
+  </CollapsibleSection>
 </template>
 
 <style scoped>
 .backup-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 6px 0;
-}
-
-.btn {
-  font-size: 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--accent-blue);
-  border-radius: 4px;
-  background: var(--accent-blue-bg);
-  color: var(--accent-blue-text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.btn:hover {
-  background: var(--accent-blue-bg-hover);
+  gap: 8px;
+  margin: 4px 0;
 }
 
 .btn-warn {
@@ -186,27 +168,33 @@ async function importFromInput(e: Event): Promise<void> {
   color: var(--accent-amber-text);
 }
 
-.btn-warn:hover {
+.btn-warn:hover:not(:disabled) {
   background: var(--accent-amber-bg-hover);
 }
 
 .import-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  margin: 6px 0;
+  justify-content: center;
   cursor: pointer;
 }
 
 .import-label input[type='file'] {
-  font-size: 11px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.import-label:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 .msg {
-  font-size: 11px;
+  margin: 6px 0;
+  font-size: 13px;
   color: var(--text-success);
-  margin: 4px 0;
 }
 
 .msg.error {
@@ -214,9 +202,9 @@ async function importFromInput(e: Event): Promise<void> {
 }
 
 .backup-note {
-  font-size: 10px;
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
   color: var(--text-secondary);
-  margin: 6px 0 0;
-  line-height: 1.3;
 }
 </style>

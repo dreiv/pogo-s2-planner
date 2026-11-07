@@ -7,6 +7,7 @@ import { MAP_CONTEXT_KEY, type MapContext } from '../map/MapContext'
 import { S2GridLayer, type CellStyleFn } from '../map/S2GridLayer'
 import { PoiLayer } from '../map/PoiLayer'
 import { RangeLayer } from '../map/RangeLayer'
+import { S14Highlight } from '../map/S14Highlight'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { useMarksStore } from '../stores/marks'
@@ -16,7 +17,7 @@ import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
 import { showCellPopup } from '../map/cellPopup'
 import { showS14StatsPopup } from '../map/s14Popup'
 import { computeS14Stats, DEFAULT_THRESHOLDS, type S14Stats } from '../core/stats'
-import type { MarkStatus } from '../data/db'
+import { MARK_OUTLINE_WEIGHT, MARK_STATUS_DASH } from '../markStyle'
 import {
   CELL_STATE_COLORS,
   MARK_STATUS_COLORS,
@@ -54,7 +55,7 @@ function getPoiIndex(): PoiIndex {
 }
 
 function getCellStates(): Map<string, CellState> {
-  const key = `${dataset.revision}:${settings.powerspotCounts}`
+  const key = `${dataset.revision}`
   if (key === cachedClassifyKey) return cachedCellStates
 
   const coveredS14 = new Set<string>()
@@ -69,7 +70,7 @@ function getCellStates(): Map<string, CellState> {
     dataset.pois,
     coveredS14,
     truncatedS14,
-    { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
+    DEFAULT_CLASSIFY_OPTS,
     index
   )
 
@@ -82,14 +83,14 @@ let cachedStatsKey = ''
 let cachedS14Stats: Map<string, S14Stats> = new Map()
 
 function getS14Stats(): Map<string, S14Stats> {
-  const key = `${dataset.revision}:${settings.powerspotCounts}:${marks.revision}`
+  const key = `${dataset.revision}:${marks.revision}`
   if (key === cachedStatsKey) return cachedS14Stats
   cachedS14Stats = computeS14Stats(
     dataset.pois,
     dataset.cells,
     {
       thresholds: DEFAULT_THRESHOLDS,
-      classifyOpts: { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: settings.powerspotCounts },
+      classifyOpts: DEFAULT_CLASSIFY_OPTS,
       pendingTokens: marks.pendingTokens
     },
     getPoiIndex()
@@ -126,33 +127,23 @@ const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
   unknown: { fill: CELL_STATE_COLORS.unknown, opacity: 0 }
 }
 
-const MARK_COLORS: Record<MarkStatus, string> = {
-  planificat: MARK_STATUS_COLORS.planificat,
-  propus: MARK_STATUS_COLORS.propus,
-  'in-review': MARK_STATUS_COLORS['in-review'],
-  respins: MARK_STATUS_COLORS.respins,
-  aprobat: MARK_STATUS_COLORS.aprobat
-}
-
 function makeS17CellStyle(): CellStyleFn {
   const states = getCellStates()
   const markMap = marks.markByToken
   return (token: string) => {
-    // Marked cells take priority
+    const state = states.get(token)
+    const c = state ? CELL_COLORS[state] : undefined
     const mark = markMap.get(token)
     if (mark) {
       return {
-        fillColor: MARK_COLORS[mark.status],
-        fillOpacity: 0.4,
-        color: MARK_COLORS[mark.status],
-        weight: 2,
-        dashArray: '4 2'
+        fillColor: c?.fill ?? MARK_STATUS_COLORS[mark.status],
+        fillOpacity: c?.opacity ?? 0,
+        color: MARK_STATUS_COLORS[mark.status],
+        weight: MARK_OUTLINE_WEIGHT,
+        dashArray: MARK_STATUS_DASH[mark.status]
       }
     }
-    const state = states.get(token)
-    if (!state) return null
-    const c = CELL_COLORS[state]
-    if (c.opacity === 0) return null
+    if (!c || c.opacity === 0) return null
     return { fillColor: c.fill, fillOpacity: c.opacity }
   }
 }
@@ -414,6 +405,7 @@ onBeforeUnmount(() => {
   if (s17Layer) { s17Layer.destroy(); s17Layer = null }
   if (poiLayer) { poiLayer.destroy(); poiLayer = null }
   if (rangeLayer) { rangeLayer.destroy(); rangeLayer = null }
+  if (s14Highlight) { s14Highlight.clear(); s14Highlight = null }
   if (map) {
     map.remove()
     map = null
@@ -433,13 +425,21 @@ function zoomToS14(token: string): void {
   map.setView([center[0], center[1]], Math.max(map.getZoom(), 15))
 }
 
+let s14Highlight: S14Highlight | null = null
+
+function highlightS14(token: string | null): void {
+  if (!map) return
+  s14Highlight ??= new S14Highlight(map)
+  s14Highlight.show(token)
+}
+
 /** Move the range center to the last known field position. */
 function moveRangeToPosition(): void {
   if (!lastFieldPosition) return
   settings.setRangeCenter(lastFieldPosition)
 }
 
-defineExpose({ zoomToS14, moveRangeToPosition })
+defineExpose({ zoomToS14, highlightS14, moveRangeToPosition })
 </script>
 
 <template>

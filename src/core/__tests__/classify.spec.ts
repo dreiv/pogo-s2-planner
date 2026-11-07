@@ -101,9 +101,9 @@ describe('poiOccupies', () => {
     expect(poiOccupies(poi)).toBe(false)
   })
 
-  it('powerspot occupies when powerspotCounts=true', () => {
+  it('powerspot never occupies a cell', () => {
     const poi = makePoi(45.7, 21.3, [activePowerSpot()])
-    expect(poiOccupies(poi, { ...DEFAULT_CLASSIFY_OPTS, powerspotCounts: true })).toBe(true)
+    expect(poiOccupies(poi, DEFAULT_CLASSIFY_OPTS)).toBe(false)
   })
 
   it('other does not occupy', () => {

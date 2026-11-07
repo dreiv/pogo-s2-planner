@@ -1,24 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import MapView from './components/MapView.vue'
-import ImportPanel from './components/ImportPanel.vue'
-import RangePanel from './components/RangePanel.vue'
+import IntroGuide from './components/IntroGuide.vue'
 import S14Panel from './components/S14Panel.vue'
 import MarksPanel from './components/MarksPanel.vue'
+import RangePanel from './components/RangePanel.vue'
+import GridsPanel from './components/GridsPanel.vue'
+import PoiPanel from './components/PoiPanel.vue'
+import FieldPanel from './components/FieldPanel.vue'
+import LegendPanel from './components/LegendPanel.vue'
+import ImportPanel from './components/ImportPanel.vue'
 import BackupPanel from './components/BackupPanel.vue'
+import GlossaryPanel from './components/GlossaryPanel.vue'
+import DangerZone from './components/DangerZone.vue'
 import PwaUpdate from './components/PwaUpdate.vue'
-import { useSettingsStore } from './stores/settings'
 import { useDatasetStore } from './stores/dataset'
 import { useMarksStore } from './stores/marks'
-import {
-  CELL_STATE_COLORS,
-  S14_STATS_COLORS,
-  GRID_STROKE,
-  withAlpha
-} from './theme'
 
 const panelOpen = ref(false)
-const settings = useSettingsStore()
 const dataset = useDatasetStore()
 const marks = useMarksStore()
 const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
@@ -37,136 +36,33 @@ function onZoomToS14(token: string): void {
   mapViewRef.value?.zoomToS14(token)
 }
 
-// --- Legend swatches (colors from theme tokens) ---
-interface LegendItem {
-  label: string
-  background: string
-  border: string
-  dashed?: boolean
+function onHighlightS14(token: string | null): void {
+  mapViewRef.value?.highlightS14(token)
 }
-
-const s17Legend: LegendItem[] = [
-  {
-    label: 'Occupied (active stop/gym)',
-    background: withAlpha(CELL_STATE_COLORS.occupied, 0.35),
-    border: CELL_STATE_COLORS.occupied
-  },
-  {
-    label: 'Free',
-    background: withAlpha(CELL_STATE_COLORS.free, 0.25),
-    border: CELL_STATE_COLORS.free
-  },
-  {
-    label: 'Free (uncertain – S14 truncated)',
-    background: withAlpha(CELL_STATE_COLORS['free-uncertain'], 0.3),
-    border: CELL_STATE_COLORS['free-uncertain'],
-    dashed: true
-  },
-  {
-    label: 'Unknown (no data)',
-    background: 'transparent',
-    border: GRID_STROKE.s17
-  }
-]
-
-const s14Legend: LegendItem[] = [
-  {
-    label: 'At threshold (0 POI missing)',
-    background: withAlpha(S14_STATS_COLORS.atThreshold, 0.3),
-    border: S14_STATS_COLORS.atThreshold
-  },
-  {
-    label: '1 POI missing',
-    background: withAlpha(S14_STATS_COLORS.nearThreshold, 0.3),
-    border: S14_STATS_COLORS.nearThreshold
-  },
-  {
-    label: '2+ POI missing',
-    background: withAlpha(S14_STATS_COLORS.farThreshold, 0.3),
-    border: S14_STATS_COLORS.farThreshold
-  }
-]
 </script>
 
 <template>
   <div id="app-root">
     <MapView ref="mapViewRef" @cell-selected="onCellSelected" />
-    <aside class="side-panel" :class="{ open: panelOpen }">
-      <button class="panel-toggle" @click="panelOpen = !panelOpen">
+    <aside class="side-panel" :class="{ open: panelOpen }" aria-label="Planner sidebar">
+      <button class="panel-toggle" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
+        @click="panelOpen = !panelOpen">
         {{ panelOpen ? '✕' : '☰' }}
       </button>
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
-        <section class="panel-section">
-          <h3>S2 Grids</h3>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.showS14" @change="settings.toggleS14()" />
-            <span>S14 grid (~0.6 km)</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.showS17" @change="settings.toggleS17()" />
-            <span>S17 grid (~70 m)</span>
-          </label>
-        </section>
-        <section class="panel-section">
-          <h3>POI</h3>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.showPois" @change="settings.toggleShowPois()" />
-            <span>Show POI</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.showOtherPois" @change="settings.toggleShowOtherPois()" />
-            <span>Show "other"</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.stopGymOnly" @change="settings.toggleStopGymOnly()" />
-            <span>Stop/gym only</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.powerspotCounts" @change="settings.togglePowerspotCounts()" />
-            <span>Powerspot = occupied</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.showPoiImages" @change="settings.toggleShowPoiImages()" />
-            <span>Show POI photos</span>
-          </label>
-        </section>
-        <section class="panel-section">
-          <h3>Field</h3>
-          <label class="toggle-row">
-            <input type="checkbox" :checked="settings.fieldMode"
-              @change="settings.setFieldMode(($event.target as HTMLInputElement).checked)" />
-            <span>Track location (GPS)</span>
-          </label>
-          <label v-if="settings.fieldMode" class="toggle-row">
-            <input type="checkbox" :checked="settings.followPosition" @change="settings.toggleFollowPosition()" />
-            <span>Follow location</span>
-          </label>
-          <button v-if="settings.fieldMode" class="field-range-btn" @click="mapViewRef?.moveRangeToPosition()">
-            Move range center to position
-          </button>
-        </section>
-        <section v-if="settings.showS14Stats" class="panel-section">
-          <h3>S14 Legend (stats)</h3>
-          <div v-for="item in s14Legend" :key="item.label" class="legend-row">
-            <span class="legend-swatch"
-              :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
-            <span>{{ item.label }}</span>
-          </div>
-        </section>
-        <section class="panel-section">
-          <h3>S17 Legend</h3>
-          <div v-for="item in s17Legend" :key="item.label" class="legend-row">
-            <span class="legend-swatch"
-              :style="{ background: item.background, border: `1px ${item.dashed ? 'dashed' : 'solid'} ${item.border}` }"></span>
-            <span>{{ item.label }}</span>
-          </div>
-        </section>
-        <S14Panel @zoom-to-s14="onZoomToS14" />
+        <IntroGuide />
+        <S14Panel @zoom-to-s14="onZoomToS14" @highlight-s14="onHighlightS14" />
         <MarksPanel ref="marksPanelRef" />
         <RangePanel />
+        <GridsPanel />
+        <PoiPanel />
+        <FieldPanel @move-range="mapViewRef?.moveRangeToPosition()" />
+        <LegendPanel />
         <ImportPanel />
         <BackupPanel />
+        <GlossaryPanel />
+        <DangerZone />
       </div>
     </aside>
     <PwaUpdate />
@@ -230,7 +126,7 @@ body {
 }
 
 .panel-content {
-  padding: 60px 16px 16px;
+  padding: 0 16px;
   overflow-y: auto;
   flex: 1;
 }

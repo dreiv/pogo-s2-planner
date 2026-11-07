@@ -15,14 +15,11 @@ export type PoiKind = 'stop' | 'gym' | 'powerspot' | 'other'
 export const DEFAULT_ACTIVE_BRAND = 'HOLOHOLO'
 
 export interface ClassifyOptions {
-  /** Whether POWERSPOT counts as occupied. Default: false. */
-  powerspotCounts: boolean
   /** Active game brand to match (case-insensitive). Default: 'HOLOHOLO'. */
   activeBrand: string
 }
 
 export const DEFAULT_CLASSIFY_OPTS: ClassifyOptions = {
-  powerspotCounts: false,
   activeBrand: DEFAULT_ACTIVE_BRAND
 }
 
@@ -64,7 +61,6 @@ export function poiOccupies(
 ): boolean {
   const kind = poiKind(poi, opts)
   if (kind === 'stop' || kind === 'gym') return true
-  if (kind === 'powerspot') return opts.powerspotCounts
   return false
 }
 

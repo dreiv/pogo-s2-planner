@@ -1,31 +1,62 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, ref, useId } from 'vue'
+import CollapsibleSection from './CollapsibleSection.vue'
+import InfoTip from './InfoTip.vue'
 import { useMarksStore } from '../stores/marks'
-import type { MarkStatus } from '../data/db'
-import { MARK_STATUS_COLORS } from '../theme'
+import { useDatasetStore } from '../stores/dataset'
+import type { CellMark, MarkStatus } from '../data/db'
+import { CELL_STATE_COLORS, MARK_STATUS_COLORS } from '../theme'
+import { MARK_STATUS_LABELS, MARK_STATUS_ORDER } from '../markStyle'
+import { buildPoiIndex } from '../core/poiIndex'
+import { classifyS17Token } from '../core/cellState'
+import { DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
+import { parentToken } from '../core/s2'
+import '../ui.css'
 
-const marks = useMarksStore()
-
-const STATUS_LABELS: Record<MarkStatus, string> = {
-  planificat: 'Planned',
-  propus: 'Proposed',
-  'in-review': 'In review',
-  respins: 'Rejected',
-  aprobat: 'Approved'
+const OCCUPANCY_TEXT: Record<CellState, string> = {
+  occupied: 'Occupied: an active stop or gym is already here',
+  free: 'Free: no active stop or gym here',
+  'free-uncertain': 'Free, but this S14 cell has incomplete data',
+  unknown: 'No data for this area yet'
 }
 
-const STATUS_COLORS: Record<MarkStatus, string> = MARK_STATUS_COLORS
+const marks = useMarksStore()
+const dataset = useDatasetStore()
 
-const allStatuses: MarkStatus[] = ['planificat', 'propus', 'in-review', 'respins', 'aprobat']
+const radioName = `mark-status-${useId()}`
+const noteId = useId()
 
-// Currently selected cell (set by MapView on cell click)
 const selectedToken = ref<string | null>(null)
 const noteInput = ref('')
+const removed = ref<CellMark | null>(null)
+let undoTimer: ReturnType<typeof setTimeout> | null = null
+
+const currentMark = computed(() =>
+  selectedToken.value ? marks.markByToken.get(selectedToken.value) : undefined
+)
+
+const poiIndex = computed(() => buildPoiIndex(dataset.pois))
+
+const occupancy = computed<CellState | null>(() => {
+  const token = selectedToken.value
+  if (!token) return null
+  const s14 = parentToken(token, 14)
+  const cell = dataset.cells.find((c) => c.token === s14)
+  return classifyS17Token(
+    poiIndex.value.poisByS17.get(token) ?? [],
+    { covered: cell !== undefined, truncated: cell?.truncated ?? false },
+    DEFAULT_CLASSIFY_OPTS
+  )
+})
+
+const markCountText = computed(() => {
+  const n = marks.marks.length
+  return `${n} marked ${n === 1 ? 'cell' : 'cells'}`
+})
 
 function selectCell(token: string): void {
   selectedToken.value = token
-  const mark = marks.markByToken.get(token)
-  noteInput.value = mark?.note ?? ''
+  noteInput.value = marks.markByToken.get(token)?.note ?? ''
 }
 
 function setStatus(status: MarkStatus): void {
@@ -33,135 +64,271 @@ function setStatus(status: MarkStatus): void {
   marks.setMark(selectedToken.value, status, noteInput.value)
 }
 
-function removeMark(): void {
-  if (!selectedToken.value) return
-  marks.removeMark(selectedToken.value)
-  selectedToken.value = null
-  noteInput.value = ''
+function onNoteInput(e: Event): void {
+  noteInput.value = (e.target as HTMLInputElement).value
+  const token = selectedToken.value
+  const mark = token ? marks.markByToken.get(token) : undefined
+  if (token && mark) marks.setMark(token, mark.status, noteInput.value)
 }
 
-function onNoteInput(e: Event): void {
-  const target = e.target as HTMLInputElement
-  noteInput.value = target.value
-  if (selectedToken.value) {
-    const mark = marks.markByToken.get(selectedToken.value)
-    if (mark) {
-      marks.setMark(selectedToken.value, mark.status, noteInput.value)
-    }
-  }
+async function removeMark(): Promise<void> {
+  const token = selectedToken.value
+  const mark = currentMark.value
+  if (!token || !mark) return
+  await marks.removeMark(token)
+  noteInput.value = ''
+  removed.value = mark
+  if (undoTimer) clearTimeout(undoTimer)
+  undoTimer = setTimeout(() => {
+    removed.value = null
+  }, 8000)
 }
+
+async function undoRemove(): Promise<void> {
+  const mark = removed.value
+  if (!mark) return
+  await marks.setMark(mark.token17, mark.status, mark.note)
+  removed.value = null
+  if (undoTimer) clearTimeout(undoTimer)
+  if (selectedToken.value === mark.token17) noteInput.value = mark.note
+}
+
+onBeforeUnmount(() => {
+  if (undoTimer) clearTimeout(undoTimer)
+})
 
 defineExpose({ selectCell })
 </script>
 
 <template>
-  <section class="panel-section">
-    <h3>Manual marks</h3>
+  <CollapsibleSection id="marks" title="Manual marks" default-open>
+    <p v-if="!selectedToken" class="hint">
+      Click a cell on the map to select it, then set its status here. Turn on the S17 grid to see
+      the cells.
+    </p>
 
-    <div v-if="!selectedToken" class="marks-hint">
-      Click an S17 cell to mark it.
-    </div>
-
-    <div v-else class="marks-editor">
-      <div class="marks-token">
-        <span class="token-label">S17:</span>
-        <code>{{ selectedToken.slice(-8) }}</code>
+    <div v-else class="selected-card">
+      <div class="card-head">
+        <span class="card-label">Selected cell</span>
+        <code class="token" :title="selectedToken">S17 {{ selectedToken.slice(-8) }}</code>
       </div>
+      <p v-if="occupancy" class="occupancy">
+        <span
+          class="occ-swatch"
+          :style="{ background: CELL_STATE_COLORS[occupancy] }"
+          :class="{ empty: occupancy === 'unknown' }"
+          aria-hidden="true"
+        ></span>
+        <span>{{ OCCUPANCY_TEXT[occupancy] }}</span>
+      </p>
 
-      <div class="status-buttons">
-        <button
-v-for="s in allStatuses" :key="s" class="status-btn"
-          :class="{ active: marks.markByToken.get(selectedToken)?.status === s }"
-          :style="{ borderColor: STATUS_COLORS[s] }" @click="setStatus(s)">
-          {{ STATUS_LABELS[s] }}
-        </button>
-      </div>
+      <fieldset class="status-group">
+        <legend class="field-label">
+          Status
+          <InfoTip term="marks" />
+        </legend>
+        <div class="status-options">
+          <label
+            v-for="s in MARK_STATUS_ORDER"
+            :key="s"
+            class="status-opt"
+            :class="{ checked: currentMark?.status === s }"
+          >
+            <input
+              type="radio"
+              class="sr-only"
+              :name="radioName"
+              :value="s"
+              :checked="currentMark?.status === s"
+              @change="setStatus(s)"
+            />
+            <span
+              class="status-swatch"
+              :style="{ background: MARK_STATUS_COLORS[s] }"
+              aria-hidden="true"
+            ></span>
+            <span>{{ MARK_STATUS_LABELS[s] }}</span>
+            <span v-if="currentMark?.status === s" class="check" aria-hidden="true">✓</span>
+          </label>
+        </div>
+      </fieldset>
 
-      <input v-model="noteInput" class="note-input" type="text" placeholder="Optional note..." @input="onNoteInput" />
+      <label class="field-label" :for="noteId">Note</label>
+      <input
+        :id="noteId"
+        class="note-input"
+        type="text"
+        placeholder="Optional note"
+        :value="noteInput"
+        @input="onNoteInput"
+      />
 
-      <button class="remove-btn" @click="removeMark">Delete mark</button>
+      <button
+        type="button"
+        class="ui-btn ui-btn--danger"
+        :disabled="!currentMark"
+        @click="removeMark"
+      >
+        Delete mark
+      </button>
     </div>
 
-    <div v-if="marks.marks.length > 0" class="marks-count">
-      {{ marks.marks.length }} marked cell(s)
-    </div>
-  </section>
+    <p class="undo" role="status">
+      <template v-if="removed">
+        Mark deleted.
+        <button type="button" class="link-btn" @click="undoRemove">Undo</button>
+      </template>
+    </p>
+
+    <p v-if="marks.marks.length > 0" class="marks-count">{{ markCountText }}</p>
+  </CollapsibleSection>
 </template>
 
 <style scoped>
-.marks-hint {
-  font-size: 12px;
-  color: var(--text-secondary);
+.hint {
   margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
 }
 
-.marks-editor {
-  margin: 6px 0;
+.selected-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-subtle);
 }
 
-.marks-token {
-  font-size: 11px;
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
-.token-label {
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
-.status-buttons {
+.token {
+  font-size: 13px;
+}
+
+.occupancy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.occ-swatch {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.occ-swatch.empty {
+  border: 1px solid var(--border);
+}
+
+.status-group {
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+}
+
+.status-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 6px;
 }
 
-.status-btn {
-  font-size: 10px;
-  padding: 3px 8px;
-  border: 2px solid;
-  border-radius: 4px;
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.status-opt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: var(--bg-panel);
   color: var(--text-primary);
+  font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s;
 }
 
-.status-btn.active {
-  font-weight: 700;
-}
-
-.status-btn:hover {
+.status-opt:hover {
   background: var(--bg-hover);
+}
+
+.status-opt:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.status-opt.checked {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-bg);
+  color: var(--accent-blue-text);
+  font-weight: 600;
+}
+
+.status-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 
 .note-input {
   width: 100%;
-  font-size: 11px;
-  padding: 4px 6px;
+  min-height: 32px;
+  margin-bottom: 10px;
+  padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  margin-bottom: 6px;
+  border-radius: 6px;
   background: var(--bg-app);
   color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
 }
 
-.remove-btn {
-  font-size: 11px;
-  padding: 4px 8px;
-  border: 1px solid var(--accent-red);
-  border-radius: 4px;
-  background: var(--bg-panel);
-  color: var(--accent-red);
-  cursor: pointer;
-}
-
-.remove-btn:hover {
-  background: var(--accent-red-bg);
+.undo {
+  min-height: 0;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .marks-count {
-  font-size: 11px;
+  margin: 6px 0 0;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 6px;
+}
+
+@media (pointer: coarse) {
+  .status-opt,
+  .note-input {
+    min-height: 44px;
+  }
 }
 </style>

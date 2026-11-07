@@ -24,7 +24,6 @@ export interface ExportedSettings {
   showPois: boolean
   showOtherPois: boolean
   stopGymOnly: boolean
-  powerspotCounts: boolean
   showRange: boolean
   rangeRadius: number
   rangeCenter: [number, number] | null
@@ -129,7 +128,6 @@ function defaultSettings(): ExportedSettings {
     showPois: true,
     showOtherPois: true,
     stopGymOnly: false,
-    powerspotCounts: false,
     showRange: false,
     rangeRadius: 80,
     rangeCenter: null,
@@ -160,8 +158,6 @@ function validateSettings(raw: unknown): ExportedSettings {
     showPois: typeof s.showPois === 'boolean' ? s.showPois : def.showPois,
     showOtherPois: typeof s.showOtherPois === 'boolean' ? s.showOtherPois : def.showOtherPois,
     stopGymOnly: typeof s.stopGymOnly === 'boolean' ? s.stopGymOnly : def.stopGymOnly,
-    powerspotCounts:
-      typeof s.powerspotCounts === 'boolean' ? s.powerspotCounts : def.powerspotCounts,
     showRange: typeof s.showRange === 'boolean' ? s.showRange : def.showRange,
     rangeRadius: typeof s.rangeRadius === 'number' ? s.rangeRadius : def.rangeRadius,
     rangeCenter:

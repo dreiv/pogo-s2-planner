@@ -7,6 +7,7 @@ import { db, type ImportRecord } from '../data/db'
 import { parseWayfarer, type ParsedCell, type ParsedPoi } from '../core/wayfarer/parse'
 import { mergeMany, type MergeStats } from '../core/wayfarer/merge'
 import { poiKind } from '../core/classify'
+import defaultFixture from '../../fixtures/wayfarer-sample.json'
 
 export interface ImportSummary {
   documents: number
@@ -74,6 +75,12 @@ export const useDatasetStore = defineStore('dataset', {
         db.cells.toArray(),
         db.imports.orderBy('importedAt').reverse().toArray()
       ])
+      // First open (empty DB, never imported): seed with bundled sample data.
+      if (pois.length === 0 && cells.length === 0 && imports.length === 0) {
+        await this.importDocuments([{ name: 'sample-data', json: defaultFixture }])
+        this.loaded = true
+        return
+      }
       this.pois = markRaw(pois)
       this.cells = markRaw(cells)
       this.imports = imports

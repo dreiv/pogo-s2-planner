@@ -1,5 +1,5 @@
-/** Default map center (lat, lng) — Bucharest, Romania. */
-export const DEFAULT_CENTER: [number, number] = [44.4268, 26.1025]
+/** Default map center (lat, lng) — Timișoara, Romania. */
+export const DEFAULT_CENTER: [number, number] = [45.7649, 21.2531]
 
 /** Default zoom level. */
 export const DEFAULT_ZOOM = 13

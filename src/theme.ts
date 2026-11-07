@@ -29,11 +29,11 @@ export const CELL_STATE_COLORS = {
 
 /** Manual mark status colors. */
 export const MARK_STATUS_COLORS = {
-  planificat: '#3b82f6',
-  propus: '#f59e0b',
-  'in-review': '#8b5cf6',
-  respins: '#ef4444',
-  aprobat: '#22c55e'
+  planificat: '#2563eb',
+  propus: '#7c3aed',
+  'in-review': '#0891b2',
+  respins: '#db2777',
+  aprobat: '#0f766e'
 } as const
 
 /** S14 stats fill colors, by distance to the next gym threshold. */

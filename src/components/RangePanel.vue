@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
+import CollapsibleSection from './CollapsibleSection.vue'
+import InfoTip from './InfoTip.vue'
+import ToggleRow from './ToggleRow.vue'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { poisWithin, cellsIntersectingCircle } from '../core/geo'
 import { poiKind } from '../core/classify'
+import '../ui.css'
 
 const settings = useSettingsStore()
 const dataset = useDatasetStore()
+const sliderId = useId()
 
 const rangePois = computed(() => {
   if (!settings.rangeCenter) return []
@@ -51,49 +56,72 @@ function useMyLocation(): void {
     (pos) => {
       settings.setRangeCenter([pos.coords.latitude, pos.coords.longitude])
     },
-    () => {
-      // ignore
-    }
+    () => undefined
   )
 }
 </script>
 
 <template>
-  <section class="panel-section">
-    <h3>Range</h3>
-    <label class="toggle-row">
-      <input type="checkbox" :checked="settings.showRange" @change="settings.toggleShowRange()" />
-      <span>Range tool</span>
-    </label>
+  <CollapsibleSection id="range" title="Range">
+    <template #tip><InfoTip term="rangeTool" /></template>
+
+    <button
+      type="button"
+      class="ui-btn ui-btn--block"
+      :class="{ 'ui-btn--pressed': settings.showRange }"
+      :aria-pressed="settings.showRange"
+      @click="settings.toggleShowRange()"
+    >
+      <span aria-hidden="true">{{ settings.showRange ? '✓' : '○' }}</span>
+      Range tool
+    </button>
 
     <template v-if="settings.showRange">
+      <p class="hint">
+        {{
+          settings.rangeCenter
+            ? 'Click the map to move the center.'
+            : 'Click the map to place the center of the circle.'
+        }}
+      </p>
+
       <div class="range-controls">
-        <label class="range-label">
+        <label class="range-label" :for="sliderId">
           Radius: <strong>{{ settings.rangeRadius }} m</strong>
         </label>
         <input
-type="range" :min="20" :max="500" :step="10" :value="settings.rangeRadius" class="range-slider"
-          @input="settings.setRangeRadius(Number(($event.target as HTMLInputElement).value))" />
+          :id="sliderId"
+          type="range"
+          :min="20"
+          :max="500"
+          :step="10"
+          :value="settings.rangeRadius"
+          :aria-valuetext="`${settings.rangeRadius} meters`"
+          class="range-slider"
+          @input="settings.setRangeRadius(Number(($event.target as HTMLInputElement).value))"
+        />
         <div class="range-presets">
           <button
-v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
-            :class="{ active: settings.rangeRadius === p }" @click="settings.setRangeRadius(p)">
+            v-for="p in [80, 250, 500]"
+            :key="p"
+            type="button"
+            class="ui-btn preset-btn"
+            :class="{ 'ui-btn--pressed': settings.rangeRadius === p }"
+            :aria-pressed="settings.rangeRadius === p"
+            @click="settings.setRangeRadius(p)"
+          >
             {{ p }} m
           </button>
         </div>
       </div>
 
-      <button class="range-btn" @click="useMyLocation">
-        Use my location
+      <button type="button" class="ui-btn ui-btn--block range-btn" @click="useMyLocation">
+        Use my location as the center
       </button>
 
-      <p v-if="!settings.rangeCenter" class="range-hint">
-        Click on the map to set the center.
-      </p>
-
-      <template v-else>
-        <div class="range-stats">
-          <p><strong>{{ stopGymPois.length }}</strong> stop/gym in range</p>
+      <template v-if="settings.rangeCenter">
+        <div class="range-stats" aria-live="polite">
+          <p><strong>{{ stopGymPois.length }}</strong> stops and gyms in range</p>
           <p><strong>{{ s17Cells.length }}</strong> S17 cells touched</p>
           <p><strong>{{ s14Cells.length }}</strong> S14 cells touched</p>
         </div>
@@ -107,27 +135,37 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
         </ul>
       </template>
 
-      <label class="toggle-row">
-        <input type="checkbox" :checked="settings.showRangeRings" @change="settings.toggleShowRangeRings()" />
-        <span>80 m rings (stop/gym)</span>
-      </label>
+      <ToggleRow
+        :checked="settings.showRangeRings"
+        label="Show 80 m rings around stops and gyms"
+        term="rangeRings"
+        @toggle="settings.toggleShowRangeRings()"
+      />
     </template>
-  </section>
+  </CollapsibleSection>
 </template>
 
 <style scoped>
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
 .range-controls {
   margin: 8px 0;
 }
 
 .range-label {
-  font-size: 13px;
   display: block;
   margin-bottom: 4px;
+  font-size: 13px;
 }
 
 .range-slider {
   width: 100%;
+  min-height: 24px;
   margin: 4px 0;
 }
 
@@ -139,46 +177,15 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 
 .preset-btn {
   flex: 1;
-  padding: 4px 8px;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-panel);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.preset-btn.active {
-  background: var(--accent-blue);
-  color: #fff;
-  border-color: var(--accent-blue);
 }
 
 .range-btn {
-  width: 100%;
-  padding: 6px;
   margin: 8px 0;
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.range-btn:hover {
-  background: var(--bg-hover);
-}
-
-.range-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 4px 0;
 }
 
 .range-stats {
-  font-size: 13px;
   margin: 8px 0;
+  font-size: 13px;
 }
 
 .range-stats p {
@@ -186,28 +193,28 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 }
 
 .range-poi-list {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0;
   max-height: 200px;
+  margin: 8px 0;
+  padding: 0;
   overflow-y: auto;
+  list-style: none;
 }
 
 .range-poi-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
   padding: 3px 0;
   border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
 }
 
 .poi-kind {
-  font-size: 10px;
+  flex-shrink: 0;
   padding: 1px 4px;
   border-radius: 3px;
   color: #fff;
-  flex-shrink: 0;
+  font-size: 10px;
 }
 
 .poi-kind.stop {
@@ -234,7 +241,7 @@ v-for="p in [80, 250, 500]" :key="p" class="preset-btn"
 }
 
 .poi-dist {
-  color: var(--text-secondary);
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 </style>

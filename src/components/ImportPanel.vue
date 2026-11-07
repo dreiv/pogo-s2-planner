@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import CollapsibleSection from './CollapsibleSection.vue'
+import InfoTip from './InfoTip.vue'
 import { useDatasetStore, type ImportSummary } from '../stores/dataset'
 import { splitJsonDocuments } from '../core/wayfarer/split'
+import '../ui.css'
 
 const dataset = useDatasetStore()
 const pasteText = ref('')
@@ -67,48 +70,62 @@ async function handlePaste(): Promise<void> {
   }
 }
 
-async function handleClear(): Promise<void> {
-  if (!confirm('Delete all imported data?')) return
-  await dataset.clearAll()
-  lastSummary.value = null
-  errors.value = []
+function formatTime(ts: number): string {
+  return Number.isFinite(ts) && ts > 0 ? new Date(ts).toLocaleString() : 'unknown time'
 }
 </script>
 
 <template>
-  <section class="import-panel">
-    <h3>Wayfarer Import</h3>
+  <CollapsibleSection id="import" title="Wayfarer import" default-open>
+    <p class="hint">
+      Load your Wayfarer data first. Nothing else on this panel works without it.
+      <InfoTip term="importMerge" />
+    </p>
 
-    <div class="import-actions">
-      <label class="file-btn">
-        <input
-type="file" accept=".json,.txt,application/json" multiple :disabled="importing"
-          @change="handleFileUpload" />
-        <span>📂 JSON file(s)</span>
-      </label>
-    </div>
+    <details class="how-to">
+      <summary>How to get the Wayfarer JSON</summary>
+      <ol>
+        <li>
+          Open <a href="https://wayfarer.pokemon-go.community/" target="_blank" rel="noopener">Wayfarer</a>
+          in your browser.
+        </li>
+        <li>Open DevTools and switch to the Network tab.</li>
+        <li>Search or select the area you want in Wayfarer.</li>
+        <li>In the Network tab, open the data request (usually search or query) and copy its Response (JSON).</li>
+        <li>Paste it below, or save it as a file and load it.</li>
+      </ol>
+    </details>
 
+    <label class="ui-btn ui-btn--block file-btn">
+      <input
+        type="file" accept=".json,.txt,application/json" multiple :disabled="importing"
+        @change="handleFileUpload" />
+      <span>📂 Load JSON file(s)</span>
+    </label>
+
+    <label class="field-label" for="wf-paste">…or paste JSON</label>
     <textarea
-v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows="4"
-      :disabled="importing"></textarea>
-    <button class="paste-btn" :disabled="importing || !pasteText.trim()" @click="handlePaste">
+      id="wf-paste" v-model="pasteText" class="paste-area" placeholder="Paste Wayfarer JSON here" rows="4"
+      :disabled="importing" aria-describedby="wf-paste-hint"></textarea>
+    <button
+      class="ui-btn ui-btn--primary ui-btn--block" :disabled="importing || !pasteText.trim()"
+      @click="handlePaste">
       {{ importing ? 'Importing…' : 'Import from text' }}
     </button>
+    <p v-if="!pasteText.trim() && !importing" id="wf-paste-hint" class="hint">Paste JSON to enable this button.</p>
 
-    <!-- Errors -->
-    <div v-if="errors.length > 0" class="errors">
+    <div v-if="errors.length > 0" class="errors" role="alert">
       <h4>Errors</h4>
       <ul>
         <li v-for="(err, i) in errors" :key="i">{{ err }}</li>
       </ul>
     </div>
 
-    <!-- Summary -->
-    <div v-if="lastSummary" class="summary">
+    <div v-if="lastSummary" class="summary" aria-live="polite">
       <h4>Import summary</h4>
       <p class="summary-line">
         +{{ lastSummary.poisAdded }} new, {{ lastSummary.poisUpdated }} updated,
-        {{ lastSummary.poisRemoved }} removed, {{ lastSummary.poisUnchanged }} unchanged
+        {{ lastSummary.poisRemoved }} removed <InfoTip term="removed" />, {{ lastSummary.poisUnchanged }} unchanged
         · cells +{{ lastSummary.cellsAdded }}
       </p>
       <p v-if="lastSummary.documents > 1" class="summary-line">
@@ -117,145 +134,139 @@ v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows=
       <dl>
         <dt>POIs</dt>
         <dd>{{ lastSummary.poiCount }}</dd>
-        <dt>Pokéstop</dt>
+        <dt>Pokéstops</dt>
         <dd>{{ lastSummary.stopCount }}</dd>
-        <dt>Gym</dt>
+        <dt>Gyms</dt>
         <dd>{{ lastSummary.gymCount }}</dd>
-        <dt>Power Spot</dt>
+        <dt>Power Spots</dt>
         <dd>{{ lastSummary.powerSpotCount }}</dd>
-        <dt>No GMO</dt>
+        <dt>Non-game POIs</dt>
         <dd>{{ lastSummary.noGmoCount }}</dd>
-        <dt>Cells</dt>
+        <dt>S14 cells</dt>
         <dd>{{ lastSummary.cellCount }}</dd>
-        <dt>Truncated cells</dt>
+        <dt>Incomplete cells</dt>
         <dd>{{ lastSummary.truncatedCount }}</dd>
         <dt>Warnings</dt>
         <dd>{{ lastSummary.warningCount }}</dd>
       </dl>
     </div>
 
-    <!-- Import history -->
     <div v-if="dataset.imports.length > 0" class="imports-list">
-      <h4>Imports</h4>
+      <h4>Import history</h4>
       <ul>
         <li v-for="imp in dataset.imports" :key="imp.id">
-          {{ imp.fileName }} — {{ imp.poiCount }} POIs, {{ imp.cellCount }} cells
+          <span class="imp-name">{{ imp.fileName }}</span>
+          <span class="imp-meta">{{ formatTime(imp.importedAt) }} · {{ imp.poiCount }} POIs, {{ imp.cellCount }} cells</span>
         </li>
       </ul>
+      <p class="hint">Imports merge into your existing data; they do not replace it.</p>
     </div>
-
-    <!-- Clear -->
-    <button v-if="dataset.pois.length > 0" class="clear-btn" @click="handleClear">
-      Delete all data
-    </button>
-  </section>
+  </CollapsibleSection>
 </template>
 
 <style scoped>
-.import-panel {
-  margin-bottom: 16px;
-}
-
-.import-panel h3 {
+.hint {
+  margin: 8px 0;
   font-size: 13px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin: 0 0 8px;
+  line-height: 1.4;
+  color: var(--text-secondary);
 }
 
-.import-actions {
-  margin-bottom: 8px;
+.how-to {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.how-to summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.how-to ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  line-height: 1.4;
 }
 
 .file-btn {
-  display: inline-block;
-  padding: 6px 12px;
-  background: var(--bg-hover);
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
   cursor: pointer;
-  font-size: 13px;
 }
 
 .file-btn input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.file-btn:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
 }
 
 .paste-area {
   width: 100%;
-  font-family: monospace;
-  font-size: 11px;
+  margin-bottom: 8px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 6px;
-  resize: vertical;
-  margin-bottom: 8px;
   background: var(--bg-app);
   color: var(--text-primary);
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
 }
 
 .errors {
-  margin-bottom: 8px;
+  margin: 8px 0;
   padding: 8px;
-  background: rgba(220, 50, 50, 0.1);
   border: 1px solid rgba(220, 50, 50, 0.3);
   border-radius: 4px;
-}
-
-.errors h4 {
-  margin: 0 0 4px;
-  font-size: 12px;
-  color: #e05050;
-}
-
-.errors ul {
-  margin: 0;
-  padding-left: 16px;
-  font-size: 11px;
-  color: #e05050;
-}
-
-.summary-line {
-  font-size: 12px;
-  margin: 0 0 4px;
-  color: var(--text-primary);
-}
-
-.paste-btn {
-  width: 100%;
-  padding: 6px;
-  background: var(--accent-blue);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  background: rgba(220, 50, 50, 0.1);
   font-size: 13px;
-  margin-bottom: 12px;
 }
 
-.paste-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+.errors h4,
+.summary h4,
+.imports-list h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.errors ul,
+.imports-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .summary {
-  background: var(--bg-subtle);
+  margin: 8px 0;
+  padding: 8px;
   border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  background: var(--bg-subtle);
   font-size: 13px;
 }
 
-.summary h4 {
-  margin: 0 0 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.summary-line {
+  margin: 4px 0;
 }
 
 .summary dl {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 12px;
-  margin: 0;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin: 6px 0 0;
 }
 
 .summary dt {
@@ -265,42 +276,24 @@ v-model="pasteText" class="paste-area" placeholder="…or paste JSON here" rows=
 .summary dd {
   margin: 0;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .imports-list {
-  margin-bottom: 12px;
-  font-size: 12px;
-}
-
-.imports-list h4 {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 0 0 4px;
-}
-
-.imports-list ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  margin-top: 12px;
 }
 
 .imports-list li {
-  padding: 2px 0;
-  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
 }
 
-.clear-btn {
-  width: 100%;
-  padding: 6px;
+.imp-meta {
+  color: var(--text-secondary);
   font-size: 12px;
-  border: 1px solid var(--accent-red);
-  border-radius: 4px;
-  background: var(--bg-panel);
-  color: var(--accent-red);
-  cursor: pointer;
-}
-
-.clear-btn:hover {
-  background: var(--accent-red-bg);
 }
 </style>

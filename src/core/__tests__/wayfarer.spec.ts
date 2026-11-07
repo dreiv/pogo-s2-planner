@@ -1,7 +1,107 @@
 import { describe, it, expect } from 'vitest'
 import { parseWayfarer, type ParsedPoi, type ParsedCell } from '../wayfarer/parse'
 import { mergeImports } from '../wayfarer/merge'
-import sample from '../../../fixtures/wayfarer-sample.json'
+
+// Inline synthetic fixture (independent of the bundled sample, which is real
+// data and also used as the app's default seed). Two cells, twelve POIs.
+const sample = {
+  result: {
+    snapshot: '2026-11-06',
+    data: [
+      {
+        metadata: { s2CellId: '47456785', count: 12, s2CellLevel: 14 },
+        pois: [
+          {
+            poiId: 'poi-001',
+            latE6: 44426800,
+            lngE6: 26102500,
+            title: 'Stop Alpha',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-002',
+            latE6: 44427000,
+            lngE6: 26103000,
+            title: 'Gym Beta',
+            gmo: [{ entity: 'GYM', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-003',
+            latE6: 44427100,
+            lngE6: 26103100,
+            title: 'Stop Gamma',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          { poiId: 'poi-004', latE6: 44427200, lngE6: 26103200, title: 'No GMO', gmo: [] },
+          {
+            poiId: 'poi-005',
+            latE6: 44427300,
+            lngE6: 26103300,
+            title: 'Stop Delta',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-006',
+            latE6: 44427400,
+            lngE6: 26103400,
+            title: 'Multi',
+            gmo: [
+              { entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' },
+              { entity: 'GYM', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }
+            ]
+          }
+        ]
+      },
+      {
+        metadata: { s2CellId: '4745678d', count: 50, s2CellLevel: 14 },
+        pois: [
+          {
+            poiId: 'poi-007',
+            latE6: 44428000,
+            lngE6: 26104000,
+            title: 'Stop Epsilon',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-008',
+            latE6: 44428100,
+            lngE6: 26104100,
+            title: 'Gym Zeta',
+            gmo: [{ entity: 'GYM', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-009',
+            latE6: 44428200,
+            lngE6: 26104200,
+            title: 'Stop Eta',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-010',
+            latE6: 44428300,
+            lngE6: 26104300,
+            title: 'Stop Theta',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-011',
+            latE6: 44428400,
+            lngE6: 26104400,
+            title: 'Gym Iota',
+            gmo: [{ entity: 'GYM', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          },
+          {
+            poiId: 'poi-012',
+            latE6: 44428500,
+            lngE6: 26104500,
+            title: 'Stop Kappa',
+            gmo: [{ entity: 'POKESTOP', status: 'ACTIVE', gameBrand: 'HOLOHOLO' }]
+          }
+        ]
+      }
+    ]
+  }
+}
 
 // --- Parser tests ---
 

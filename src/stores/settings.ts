@@ -13,7 +13,6 @@ export interface SettingsState {
   showPois: boolean
   showOtherPois: boolean
   stopGymOnly: boolean
-  powerspotCounts: boolean
   showRange: boolean
   rangeRadius: number
   rangeCenter: [number, number] | null
@@ -55,7 +54,6 @@ export const useSettingsStore = defineStore('settings', {
       showPois: saved.showPois ?? true,
       showOtherPois: saved.showOtherPois ?? true,
       stopGymOnly: saved.stopGymOnly ?? false,
-      powerspotCounts: saved.powerspotCounts ?? false,
       showRange: saved.showRange ?? false,
       rangeRadius: saved.rangeRadius ?? 80,
       rangeCenter: saved.rangeCenter ?? null,
@@ -101,10 +99,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleStopGymOnly(): void {
       this.stopGymOnly = !this.stopGymOnly
-      persist(this.$state)
-    },
-    togglePowerspotCounts(): void {
-      this.powerspotCounts = !this.powerspotCounts
       persist(this.$state)
     },
     toggleShowRange(): void {
