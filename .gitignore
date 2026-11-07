@@ -1,0 +1,7 @@
+node_modules
+dist
+.repomix
+local-data
+temp
+docs/
+fixtures/s2-ground-truth.json
