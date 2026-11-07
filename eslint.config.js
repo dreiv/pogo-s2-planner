@@ -21,10 +21,21 @@ export default [
       parserOptions: {
         parser: tsParser,
       },
+      globals: { ...globals.browser },
+    },
+    rules: {
+      // vue/no-unused-vars handles template usage detection
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
   {
-    files: ['scripts/**/*.mjs', 'vite.config.ts'],
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs', 'vite.config.ts', 'src/**/__tests__/**'],
     languageOptions: {
       globals: { ...globals.node },
     },

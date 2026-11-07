@@ -1,0 +1,163 @@
+{
+  "result": {
+    "data": [
+      {
+        "metadata": {
+          "s2CellId": "47456785",
+          "count": 12,
+          "s2CellLevel": 14,
+          "generatedTimestamp": 1700000000,
+          "snapshot": 1700000000
+        },
+        "pois": [
+          {
+            "poiId": "poi-001",
+            "latE6": 44426800,
+            "lngE6": 26102500,
+            "title": "Stop Alpha",
+            "description": "A test pokestop.",
+            "address": "Test Street 1",
+            "imageUrl": "https://example.com/img1.png",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-002",
+            "latE6": 44427000,
+            "lngE6": 26103000,
+            "title": "Gym Beta",
+            "description": "A test gym.",
+            "address": "Test Street 2",
+            "imageUrl": "https://example.com/img2.png",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-003",
+            "latE6": 44427200,
+            "lngE6": 26103500,
+            "title": "PowerSpot Gamma",
+            "description": "A test power spot.",
+            "address": "Test Street 3",
+            "imageUrl": "",
+            "isCommunityContributed": true,
+            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-004",
+            "latE6": 44427400,
+            "lngE6": 26104000,
+            "title": "No GMO Delta",
+            "description": "A POI without game objects.",
+            "address": "Test Street 4",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": []
+          },
+          {
+            "poiId": "poi-005",
+            "latE6": 44427600,
+            "lngE6": 26104500,
+            "title": "Inactive Stop Epsilon",
+            "description": "An inactive pokestop.",
+            "address": "Test Street 5",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "POKESTOP", "status": "INACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-006",
+            "latE6": 44427800,
+            "lngE6": 26105000,
+            "title": "Multi GMO Zeta",
+            "description": "A POI with multiple game objects.",
+            "address": "Test Street 6",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [
+              { "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" },
+              { "entity": "GYM", "status": "INACTIVE", "brand": "HOLOHOLO" }
+            ]
+          }
+        ]
+      },
+      {
+        "metadata": {
+          "s2CellId": "4745678d",
+          "count": 50,
+          "s2CellLevel": 14,
+          "generatedTimestamp": 1700000000,
+          "snapshot": 1700000000
+        },
+        "pois": [
+          {
+            "poiId": "poi-007",
+            "latE6": 44428000,
+            "lngE6": 26105500,
+            "title": "Stop Eta",
+            "description": "Another stop.",
+            "address": "Test Street 7",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-008",
+            "latE6": 44428200,
+            "lngE6": 26106000,
+            "title": "Gym Theta",
+            "description": "Another gym.",
+            "address": "Test Street 8",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-009",
+            "latE6": 44428400,
+            "lngE6": 26106500,
+            "title": "No GMO Iota",
+            "description": "No game objects.",
+            "address": "Test Street 9",
+            "imageUrl": "",
+            "isCommunityContributed": true,
+            "gmo": []
+          },
+          {
+            "poiId": "poi-010",
+            "latE6": 44428600,
+            "lngE6": 26107000,
+            "title": "PowerSpot Kappa",
+            "description": "Another power spot.",
+            "address": "Test Street 10",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "POWERSPOT", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-011",
+            "latE6": 44428800,
+            "lngE6": 26107500,
+            "title": "Stop Lambda",
+            "description": "Yet another stop.",
+            "address": "Test Street 11",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "POKESTOP", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          },
+          {
+            "poiId": "poi-012",
+            "latE6": 44429000,
+            "lngE6": 26108000,
+            "title": "Gym Mu",
+            "description": "Yet another gym.",
+            "address": "Test Street 12",
+            "imageUrl": "",
+            "isCommunityContributed": false,
+            "gmo": [{ "entity": "GYM", "status": "ACTIVE", "brand": "HOLOHOLO" }]
+          }
+        ]
+      }
+    ]
+  }
+}
