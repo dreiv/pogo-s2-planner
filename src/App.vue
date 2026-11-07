@@ -61,9 +61,7 @@ function onHighlightS14(token: string | null): void {
         <DangerZone />
       </div>
     </aside>
-    <button
-      class="panel-toggle" :class="{ open: panelOpen }"
-      :aria-expanded="panelOpen" aria-label="Toggle sidebar"
+    <button class="panel-toggle" :class="{ open: panelOpen }" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
       @click="panelOpen = !panelOpen">
       {{ panelOpen ? '✕' : '☰' }}
     </button>

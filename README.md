@@ -29,17 +29,6 @@ npm run build    # build de producție în dist/
 > Formatul așteptat: `result.data[]` = celule `{ metadata: { s2CellId, count }, pois[] }`.
 > `metadata.count >= 50` → celula e marcată „posibil incompletă" (trunchiată).
 
-## Confidențialitate
-
-- Datele Wayfarer **nu se comit**. Stau în `local-data/` (gitignored) și în
-  IndexedDB (browser). `fixtures/` conține doar date sintetice (fără titluri,
-  descrieri sau imagini).
-- **Backup**: exportul implicit conține doar marcajele și setările tale.
-  Exportul cu dataset (al doilea buton) include și datele Wayfarer — **nu le
-  comite și nu le partaja** (date personale / Niantic).
-- Fără cereri de rețea în afară de tile-urile OSM (și imaginile POI, încărcate
-  doar la deschiderea popup-ului).
-
 ## PWA / instalare pe telefon
 
 - Aplicația se instalează (manifest + service worker). Funcționează în teren cu
