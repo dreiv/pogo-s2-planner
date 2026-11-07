@@ -45,11 +45,6 @@ function onHighlightS14(token: string | null): void {
   <div id="app-root">
     <MapView ref="mapViewRef" @cell-selected="onCellSelected" />
     <aside class="side-panel" :class="{ open: panelOpen }" aria-label="Planner sidebar">
-      <button
-        class="panel-toggle" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
-        @click="panelOpen = !panelOpen">
-        {{ panelOpen ? '✕' : '☰' }}
-      </button>
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <IntroGuide />
@@ -66,6 +61,12 @@ function onHighlightS14(token: string | null): void {
         <DangerZone />
       </div>
     </aside>
+    <button
+      class="panel-toggle" :class="{ open: panelOpen }"
+      :aria-expanded="panelOpen" aria-label="Toggle sidebar"
+      @click="panelOpen = !panelOpen">
+      {{ panelOpen ? '✕' : '☰' }}
+    </button>
     <PwaUpdate />
   </div>
 </template>
@@ -111,19 +112,25 @@ body {
 .panel-toggle {
   position: absolute;
   top: 12px;
-  left: -40px;
+  right: 0;
   width: 40px;
   height: 40px;
   border: none;
   background: var(--bg-panel);
   color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-radius: 8px 0 0 8px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2000;
+  transition: right 0.2s ease;
+}
+
+.panel-toggle.open {
+  right: 280px;
 }
 
 .panel-content {
@@ -254,12 +261,19 @@ body {
   }
 
   .panel-toggle {
-    top: -44px;
+    top: auto;
+    right: auto;
+    bottom: env(safe-area-inset-bottom);
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 8px 8px 0 0;
+    border-radius: 8px;
     width: 44px;
     height: 44px;
+  }
+
+  .panel-toggle.open {
+    right: auto;
+    bottom: calc(60vh + env(safe-area-inset-bottom));
   }
 
   .panel-content {
