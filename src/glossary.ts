@@ -46,10 +46,6 @@ export const TERMS = {
     label: 'Range tool',
     text: 'Draws a circle on the map (20–500 m). Click the map to place its center. It lists the stops and gyms inside the circle and counts the S17 and S14 cells it touches.'
   },
-  rangeRings: {
-    label: '80 m rings',
-    text: 'Draws an 80 m circle around every stop and gym.'
-  },
   importMerge: {
     label: 'How imports merge',
     text: 'Imports are merged into your existing data, not replaced. A cell you re-import is updated from the new data and all other cells stay. Importing the same file twice changes nothing.'

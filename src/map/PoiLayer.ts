@@ -107,6 +107,8 @@ export class PoiLayer {
         fillColor: POI_COLORS[kind],
         fillOpacity: 1,
         opacity: 1,
+        // Keep a marker click from also reaching the map (cell selection, range center).
+        bubblingMouseEvents: false,
         renderer: this.renderer
       })
 

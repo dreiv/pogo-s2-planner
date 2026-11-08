@@ -16,7 +16,6 @@ export interface SettingsState {
   showRange: boolean
   rangeRadius: number
   rangeCenter: [number, number] | null
-  showRangeRings: boolean
   showPoiImages: boolean
 }
 
@@ -54,7 +53,6 @@ export const useSettingsStore = defineStore('settings', {
       showRange: saved.showRange ?? false,
       rangeRadius: saved.rangeRadius ?? 80,
       rangeCenter: saved.rangeCenter ?? null,
-      showRangeRings: saved.showRangeRings ?? false,
       showPoiImages: saved.showPoiImages ?? true
     }
   },
@@ -105,10 +103,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     setRangeCenter(center: [number, number] | null): void {
       this.rangeCenter = center
-      persist(this.$state)
-    },
-    toggleShowRangeRings(): void {
-      this.showRangeRings = !this.showRangeRings
       persist(this.$state)
     },
     toggleShowPoiImages(): void {

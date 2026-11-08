@@ -1,5 +1,5 @@
 import L from 'leaflet'
-import { cellsCoveringBounds, cellVertices, type Bounds } from '../core/s2'
+import { cellsCoveringBounds, cellTokenAt, cellVertices, type Bounds } from '../core/s2'
 import { shouldShowGrid } from '../core/grid-gating'
 
 const VERTEX_CACHE_SIZE = 2048
@@ -60,6 +60,8 @@ export class S2GridLayer {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private hintEl: HTMLElement | null = null
   private destroyed = false
+  /** True while polygons for the current view are on the map. */
+  private drawn = false
 
   constructor(map: L.Map, opts: S2GridLayerOptions) {
     this.map = map
@@ -78,8 +80,18 @@ export class S2GridLayer {
 
     this.map.on('moveend', this.handleMoveEnd)
     this.map.on('zoomend', this.handleMoveEnd)
+    if (this.opts.onCellClick) this.map.on('click', this.handleMapClick)
 
     this.update()
+  }
+
+  // Cell selection is resolved at map level, not per polygon: the POI canvas sits above the grid
+  // canvas and swallows clicks, so polygon handlers never fire while POIs are shown. A click on a
+  // POI marker does not reach here (markers use bubblingMouseEvents: false).
+  private handleMapClick = (e: L.LeafletMouseEvent): void => {
+    if (this.destroyed || !this.drawn) return
+    const { lat, lng } = e.latlng
+    this.opts.onCellClick?.(cellTokenAt(lat, lng, this.opts.level), lat, lng)
   }
 
   private handleMoveEnd = (): void => {
@@ -151,21 +163,16 @@ export class S2GridLayer {
         fill: style !== null,
         fillColor: style?.fillColor ?? this.opts.color,
         fillOpacity: style?.fillOpacity ?? 0,
-        interactive: this.opts.onCellClick !== undefined
+        interactive: false
       }
 
       const poly = L.polygon(latlngs, polyOpts)
       ;(poly as L.Polygon & { _s2Token?: string })._s2Token = token
 
-      if (this.opts.onCellClick) {
-        poly.on('click', (e: L.LeafletMouseEvent) => {
-          this.opts.onCellClick!(token, e.latlng.lat, e.latlng.lng)
-        })
-      }
-
       poly.addTo(this.layerGroup)
     }
 
+    this.drawn = true
     this.opts.onUpdated?.()
 
     if (import.meta.env.DEV) {
@@ -202,6 +209,7 @@ export class S2GridLayer {
   }
 
   private clearPolygons(): void {
+    this.drawn = false
     this.layerGroup.clearLayers()
   }
 
@@ -213,6 +221,7 @@ export class S2GridLayer {
     }
     this.map.off('moveend', this.handleMoveEnd)
     this.map.off('zoomend', this.handleMoveEnd)
+    this.map.off('click', this.handleMapClick)
     this.layerGroup.remove()
     this.cache.clear()
     if (this.hintEl && this.hintEl.parentNode) {

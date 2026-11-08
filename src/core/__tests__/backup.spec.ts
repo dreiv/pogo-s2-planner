@@ -32,7 +32,6 @@ function makeSettings(): ExportedSettings {
     showRange: false,
     rangeRadius: 100,
     rangeCenter: [45.71, 21.31],
-    showRangeRings: false,
     showPoiImages: true
   }
 }
@@ -220,8 +219,7 @@ describe('parseBackup', () => {
         stopGymOnly: false,
             showRange: false,
         rangeRadius: 80,
-        rangeCenter: null,
-        showRangeRings: false
+        rangeCenter: null
         // showPoiImages intentionally omitted (old backup)
       } as unknown as ExportedSettings
     }

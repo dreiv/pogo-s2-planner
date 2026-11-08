@@ -2,7 +2,6 @@
 import { computed, useId } from 'vue'
 import CollapsibleSection from './CollapsibleSection.vue'
 import InfoTip from './InfoTip.vue'
-import ToggleRow from './ToggleRow.vue'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { poisWithin, cellsIntersectingCircle } from '../core/geo'
@@ -134,13 +133,6 @@ function useMyLocation(): void {
           </li>
         </ul>
       </template>
-
-      <ToggleRow
-        :checked="settings.showRangeRings"
-        label="Show 80 m rings around stops and gyms"
-        term="rangeRings"
-        @toggle="settings.toggleShowRangeRings()"
-      />
     </template>
   </CollapsibleSection>
 </template>
