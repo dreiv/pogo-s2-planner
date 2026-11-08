@@ -42,10 +42,21 @@ describe('validateSettings', () => {
   })
 
   it('keeps valid booleans and falls back for wrong types', () => {
-    const s = validateSettings({ showS14: true, showS17: 'yes', showPoiImages: false })
+    const s = validateSettings({ showS14: true, showS17: 'yes', showGyms: false })
     expect(s.showS14).toBe(true)
     expect(s.showS17).toBe(false)
-    expect(s.showPoiImages).toBe(false)
+    expect(s.showGyms).toBe(false)
+  })
+
+  it('gyms, stops and non-game POIs are all shown by default', () => {
+    const d = defaultSettings()
+    expect([d.showGyms, d.showStops, d.showOtherPois]).toEqual([true, true, true])
+    expect(validateSettings({ showStops: 'no' }).showStops).toBe(true)
+  })
+
+  it('the retired stopGymOnly key is ignored: gyms, stops and non-game POIs stay on', () => {
+    const s = validateSettings({ stopGymOnly: true, showPoiImages: false })
+    expect([s.showGyms, s.showStops, s.showOtherPois]).toEqual([true, true, true])
   })
 })
 
@@ -57,7 +68,12 @@ describe('parseStoredSettings / migrations', () => {
   })
 
   it('round-trips through serializeSettings', () => {
-    const s = { ...defaultSettings(), showS14: true, zoom: 15, rangeCenter: [45.7, 21.2] as [number, number] }
+    const s = {
+      ...defaultSettings(),
+      showS14: true,
+      zoom: 15,
+      rangeCenter: [45.7, 21.2] as [number, number]
+    }
     expect(parseStoredSettings(serializeSettings(s))).toEqual(s)
   })
 
@@ -83,13 +99,17 @@ describe('parseStoredSettings / migrations', () => {
   })
 
   it('a bad stored value cannot reach the map code', () => {
-    const s = parseStoredSettings(JSON.stringify({ version: SETTINGS_VERSION, zoom: 400, center: 'x' }))
+    const s = parseStoredSettings(
+      JSON.stringify({ version: SETTINGS_VERSION, zoom: 400, center: 'x' })
+    )
     expect(s.zoom).toBe(19)
     expect(s.center).toEqual(DEFAULT_CENTER)
   })
 
   it('data from a newer build is validated but not migrated', () => {
-    const s = parseStoredSettings(JSON.stringify({ version: SETTINGS_VERSION + 5, zoom: 14, extra: 1 }))
+    const s = parseStoredSettings(
+      JSON.stringify({ version: SETTINGS_VERSION + 5, zoom: 14, extra: 1 })
+    )
     expect(s.zoom).toBe(14)
     expect('extra' in s).toBe(false)
   })
@@ -123,7 +143,11 @@ describe('cell colors and mark visibility', () => {
   })
 
   it('keeps valid booleans and falls back for wrong types', () => {
-    const s = validateSettings({ showCellFree: true, showCellOccupied: 'no', showCellUnknown: false })
+    const s = validateSettings({
+      showCellFree: true,
+      showCellOccupied: 'no',
+      showCellUnknown: false
+    })
     expect(s.showCellFree).toBe(true)
     expect(s.showCellOccupied).toBe(true)
     expect(s.showCellUnknown).toBe(false)

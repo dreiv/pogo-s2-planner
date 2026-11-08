@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MapView from '../components/MapView.vue'
+import { useSettingsStore } from '../stores/settings'
+import { useDatasetStore } from '../stores/dataset'
+import { CELL_FILL_OPACITY, CELL_STATE_COLORS } from '../theme'
 
 // MapView is tested against its collaborators' public API, not against Leaflet internals:
 // the layer classes and createMap are replaced, so a change inside a layer cannot break this file.
 const layerCalls: string[] = []
+const gridOpts: { level: number; cellStyle?: (token: string) => unknown }[] = []
 
 vi.mock('../map/createMap', () => ({
   createMap: vi.fn(() => ({
@@ -28,7 +32,8 @@ vi.mock('../map/PoiLayer', () => ({
 }))
 
 vi.mock('../map/S2GridLayer', () => ({
-  S2GridLayer: vi.fn(function () {
+  S2GridLayer: vi.fn(function (_map: unknown, opts: (typeof gridOpts)[number]) {
+    gridOpts.push(opts)
     return {
       setCellStyle: vi.fn(),
       destroy: () => layerCalls.push('grid:destroy')
@@ -57,6 +62,7 @@ describe('MapView', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     layerCalls.length = 0
+    gridOpts.length = 0
   })
 
   it('mounts without error', () => {
@@ -75,6 +81,23 @@ describe('MapView', () => {
     expect(layerCalls).toContain('poi:setPois')
     wrapper.unmount()
     expect(layerCalls).toContain('poi:destroy')
+  })
+
+  it('tints S14 cells without imported data (stronger gray), and only those', () => {
+    const settings = useSettingsStore()
+    settings.showS14 = true
+    const dataset = useDatasetStore()
+    dataset.cells = [{ token: 'covered', count: 3, truncated: false }] as never
+    mount(MapView)
+    const s14 = gridOpts.find((o) => o.level === 14)
+    expect(s14?.cellStyle?.('covered')).toBeNull()
+    expect(s14?.cellStyle?.('missing')).toEqual({
+      fillColor: CELL_STATE_COLORS.unknown,
+      fillOpacity: CELL_FILL_OPACITY.unknown
+    })
+    expect(CELL_FILL_OPACITY.unknown).toBeGreaterThanOrEqual(0.3)
+    settings.showCellUnknown = false
+    expect(s14?.cellStyle?.('missing')).toBeNull()
   })
 
   it('shows no grid hint until a layer reports one', () => {

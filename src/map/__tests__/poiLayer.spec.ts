@@ -3,13 +3,19 @@ import type { ParsedPoi } from '../../core/wayfarer/parse'
 
 const ops: string[] = []
 const markers: object[] = []
+const radii: number[] = []
 let groupClick: ((e: unknown) => void) | null = null
 const openedAt: unknown[] = []
 const removedListeners: string[] = []
 
 vi.mock('leaflet', () => {
   const circleMarker = () => {
-    const marker = {}
+    const marker = {
+      setRadius: (r: number) => {
+        radii.push(r)
+      },
+      setStyle: () => undefined
+    }
     markers.push(marker)
     return marker
   }
@@ -111,6 +117,7 @@ function makeMap(zoom: number, view: FakeBoundsSpec) {
 beforeEach(() => {
   ops.length = 0
   markers.length = 0
+  radii.length = 0
   openedAt.length = 0
   removedListeners.length = 0
   groupClick = null
@@ -153,8 +160,8 @@ describe('PoiLayer', () => {
     const layer = new PoiLayer(map)
     layer.setPois(makePois(50))
     ops.length = 0
-    layer.setOptions({ showImages: false })
-    layer.setOptions({ stopGymOnly: true })
+    layer.setOptions({ showOther: false })
+    layer.setOptions({ showGyms: true })
     expect(ops).toHaveLength(0)
   })
 
@@ -182,6 +189,92 @@ describe('PoiLayer', () => {
     layer.setPois(makePois(3))
     groupClick?.({ layer: {} })
     expect(openedAt).toHaveLength(0)
+  })
+
+  describe('thinning', () => {
+    // Stops 0.001 deg (~16 px at zoom 14) apart: neighbours share a 26 px square at zoom 12-13.
+    it('draws fewer markers when zoomed out than at full detail, and all at full detail', () => {
+      const { map, zoomTo } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true })
+      layer.setPois(makePois(16))
+      const thinnedCount = markers.length
+      expect(thinnedCount > 0 && thinnedCount < 16).toBe(true)
+      zoomTo(16)
+      // POI 0..15 are all in the padded view at zoom 16 too (same fake bounds).
+      expect(ops.filter((o) => o === 'add')).toHaveLength(16)
+    })
+
+    it('draws every POI below full detail zoom when thinning is off', () => {
+      const { map } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: false })
+      layer.setPois(makePois(16))
+      expect(markers).toHaveLength(16)
+    })
+
+    it('toggling thinning off adds back the hidden POIs', () => {
+      const { map } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true })
+      layer.setPois(makePois(16))
+      layer.setOptions({ thinOut: false })
+      expect(ops.filter((o) => o === 'add')).toHaveLength(16)
+    })
+
+    it('a pan at the same zoom does not swap the dots that stay in view', () => {
+      const { map, panTo } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true })
+      layer.setPois(makePois(60))
+      const before = markers.length
+      ops.length = 0
+      panTo({ south: 45.0014, north: 45.0114 })
+      expect(ops.filter((o) => o === 'remove')).toHaveLength(0)
+      expect(markers.length >= before).toBe(true)
+    })
+
+    it('reports whether anything is hidden through onThinChange', () => {
+      const states: boolean[] = []
+      const { map, zoomTo } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true, onThinChange: (t) => states.push(t) })
+      layer.setPois(makePois(16))
+      expect(states).toEqual([true])
+      zoomTo(16)
+      expect(states).toEqual([true, false])
+    })
+
+    it('does not report thinning when the points are far apart', () => {
+      const states: boolean[] = []
+      const { map } = makeMap(12, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true, onThinChange: (t) => states.push(t) })
+      layer.setPois(makePois(1))
+      expect(states).toEqual([])
+    })
+
+    it('shrinks live markers when the zoom changes dot size', () => {
+      const { map, zoomTo } = makeMap(16, VIEW)
+      const layer = new PoiLayer(map, { thinOut: true })
+      layer.setPois(makePois(3))
+      expect(radii).toHaveLength(0)
+      zoomTo(12)
+      expect(radii.length > 0).toBe(true)
+      expect(radii.every((r) => r >= 3 && r < 6)).toBe(true)
+    })
+  })
+
+  it('showGyms / showStops hide and restore their own kind', () => {
+    const { map } = makeMap(14, VIEW)
+    const layer = new PoiLayer(map)
+    const pois = makePois(4)
+    pois[1]!.game = [{ entity: 'GYM', status: 'ACTIVE', brand: 'HOLOHOLO' }]
+    layer.setPois(pois)
+    expect(ops.filter((o) => o === 'add')).toHaveLength(4)
+    ops.length = 0
+    layer.setOptions({ showGyms: false })
+    expect(ops).toEqual(['remove'])
+    ops.length = 0
+    layer.setOptions({ showStops: false })
+    expect(ops).toEqual(['remove', 'remove', 'remove'])
+    ops.length = 0
+    layer.setOptions({ showGyms: true, showStops: true })
+    expect(ops).toEqual(Array(4).fill('add'))
   })
 
   it('destroy removes every listener it added', () => {

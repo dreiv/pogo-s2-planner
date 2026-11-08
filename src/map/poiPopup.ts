@@ -4,7 +4,6 @@ import type { PoiKind } from '../core/classify'
 import { stablePoiImageUrl } from '../core/wayfarer/image'
 
 export interface PoiPopupOptions {
-  showImages: boolean
   onResize: () => void
 }
 
@@ -53,7 +52,7 @@ export function buildPoiPopupContent(
     container.appendChild(addrEl)
   }
 
-  if (opts.showImages && (kind === 'stop' || kind === 'gym')) {
+  if (kind === 'stop' || kind === 'gym') {
     const src = stablePoiImageUrl(poi.imageUrl, 320)
     if (src) {
       const img = document.createElement('img')

@@ -30,12 +30,12 @@ function collectSettings(): ExportedSettings {
     s14MinZoom: settings.s14MinZoom,
     s17MinZoom: settings.s17MinZoom,
     showPois: settings.showPois,
+    showGyms: settings.showGyms,
+    showStops: settings.showStops,
     showOtherPois: settings.showOtherPois,
-    stopGymOnly: settings.stopGymOnly,
     showRange: settings.showRange,
     rangeRadius: settings.rangeRadius,
     rangeCenter: settings.rangeCenter,
-    showPoiImages: settings.showPoiImages,
     showCellOccupied: settings.showCellOccupied,
     showCellUncertain: settings.showCellUncertain,
     showCellFree: settings.showCellFree,
@@ -152,7 +152,8 @@ async function importFromInput(e: Event): Promise<void> {
         <span aria-hidden="true">⬇</span> Export marks + settings (safe to share)
       </button>
       <button class="ui-btn ui-btn--block btn-warn" @click="exportWithDataset">
-        <span aria-hidden="true">⬇</span> Export everything incl. Wayfarer data (private, do not commit)
+        <span aria-hidden="true">⬇</span> Export everything incl. Wayfarer data (private, do not
+        commit)
       </button>
       <label class="ui-btn ui-btn--block import-label">
         <input type="file" accept="application/json,.json" @change="importFromInput" />
@@ -164,8 +165,9 @@ async function importFromInput(e: Event): Promise<void> {
     <p v-if="error" class="msg error" role="alert">{{ error }}</p>
 
     <p class="backup-note">
-      The first export has no Wayfarer data. The second one includes your Wayfarer (Niantic) data, which is personal.
-      Keep it out of version control. Importing a file that contains Wayfarer data replaces the data in this browser.
+      The first export has no Wayfarer data. The second one includes your Wayfarer (Niantic) data,
+      which is personal. Keep it out of version control. Importing a file that contains Wayfarer
+      data replaces the data in this browser.
     </p>
   </CollapsibleSection>
 </template>

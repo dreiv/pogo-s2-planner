@@ -2,21 +2,35 @@ import L from 'leaflet'
 import type { ParsedPoi } from '../core/wayfarer/parse'
 import { poiKind, type PoiKind } from '../core/classify'
 import { POI_COLORS } from '../theme'
+import {
+  poiMarkerScale,
+  scaledMarkerRadius,
+  thinCellPx,
+  thinPois,
+  toWorld,
+  type ThinCandidate
+} from '../core/poiThinning'
 import { buildPoiPopupContent } from './poiPopup'
 
 export interface PoiLayerOptions {
   /** Minimum zoom to show all POI kinds. Below this, only stop/gym. */
   fullDetailZoom: number
+  showGyms: boolean
+  showStops: boolean
+  /** Non-game POIs (only drawn from fullDetailZoom). */
   showOther: boolean
-  stopGymOnly: boolean
-  showImages: boolean
+  /** Below fullDetailZoom, draw one POI per screen square (gym first) and smaller dots. */
+  thinOut: boolean
+  /** Called when "some POIs are currently hidden by thinning" flips. */
+  onThinChange?: (thinned: boolean) => void
 }
 
 export const DEFAULT_POI_LAYER_OPTS: PoiLayerOptions = {
   fullDetailZoom: 16,
+  showGyms: true,
+  showStops: true,
   showOther: true,
-  stopGymOnly: false,
-  showImages: true
+  thinOut: false
 }
 
 const KIND_RADIUS: Record<PoiKind, number> = {
@@ -30,15 +44,15 @@ const KIND_RADIUS: Record<PoiKind, number> = {
 const VIEWPORT_PAD = 0.5
 
 function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolean {
-  if (opts.stopGymOnly && kind !== 'stop' && kind !== 'gym') return false
-  if (!opts.showOther && kind === 'other') return false
+  if (kind === 'gym' && !opts.showGyms) return false
+  if (kind === 'stop' && !opts.showStops) return false
+  if (kind === 'other' && !opts.showOther) return false
   if (zoom < opts.fullDetailZoom && kind !== 'stop' && kind !== 'gym') return false
   return true
 }
 
-interface PoiEntry {
+interface PoiEntry extends ThinCandidate {
   poi: ParsedPoi
-  kind: PoiKind
   /** True while the marker is on the map. */
   visible: boolean
   /** Created lazily when the POI enters the viewport, dropped when it leaves. */
@@ -68,6 +82,12 @@ export class PoiLayer {
   private entries: PoiEntry[] = []
   private entryByMarker = new WeakMap<L.Layer, PoiEntry>()
   private renderer: L.Canvas
+  /** POIs kept by thinning at `thinZoom`; null = not computed (recomputed lazily on refresh). */
+  private thinKept: Set<PoiEntry> | null = null
+  private thinZoom = NaN
+  private thinned = false
+  /** Radius scale the live markers currently have. */
+  private markerScale = 1
   /** Read-only counter: incremented each time the POI set is (re)loaded. For tests. */
   rebuildCount = 0
 
@@ -90,12 +110,21 @@ export class PoiLayer {
   setPois(pois: ParsedPoi[]): void {
     this.rebuildCount++
     this.group.clearLayers()
-    this.entries = pois.map((poi) => ({ poi, kind: poiKind(poi), visible: false, marker: null }))
+    this.thinKept = null
+    this.entries = pois.map((poi) => ({
+      poi,
+      id: poi.id,
+      kind: poiKind(poi),
+      ...toWorld(poi.lat, poi.lng),
+      visible: false,
+      marker: null
+    }))
     this.refresh()
   }
 
   setOptions(opts: Partial<PoiLayerOptions>): void {
     this.opts = { ...this.opts, ...opts }
+    this.thinKept = null
     this.refresh()
   }
 
@@ -105,9 +134,9 @@ export class PoiLayer {
 
   private createMarker(entry: PoiEntry): L.CircleMarker {
     const marker = L.circleMarker([entry.poi.lat, entry.poi.lng], {
-      radius: KIND_RADIUS[entry.kind],
+      radius: scaledMarkerRadius(KIND_RADIUS[entry.kind], this.markerScale),
       color: '#ffffff',
-      weight: 2,
+      weight: this.markerScale >= 0.85 ? 2 : 1,
       fillColor: POI_COLORS[entry.kind],
       fillOpacity: 1,
       opacity: 1,
@@ -127,7 +156,6 @@ export class PoiLayer {
       maxWidth: Math.min(280, (typeof window !== 'undefined' ? window.innerWidth : 360) - 72)
     })
     const content = buildPoiPopupContent(entry.poi, entry.kind, {
-      showImages: this.opts.showImages,
       onResize: () => popup.update()
     })
     popup.setLatLng([entry.poi.lat, entry.poi.lng]).setContent(content).openOn(this.map)
@@ -142,10 +170,14 @@ export class PoiLayer {
     const west = b.getWest()
     const east = b.getEast()
 
+    const kept = this.thinnedSet(zoom)
+    this.applyMarkerScale(zoom)
+
     for (const entry of this.entries) {
       const { lat, lng } = entry.poi
       const want =
         kindForZoom(entry.kind, zoom, this.opts) &&
+        (kept === null || kept.has(entry)) &&
         lat >= south &&
         lat <= north &&
         lng >= west &&
@@ -161,6 +193,45 @@ export class PoiLayer {
         this.entryByMarker.delete(entry.marker)
         entry.marker = null
       }
+    }
+  }
+
+  /**
+   * POIs that survive thinning at this zoom, or null when nothing is thinned. Depends only on the
+   * integer zoom and the filters (not on the viewport), so panning never reshuffles the dots and
+   * the O(n) pass runs once per zoom level, not on every move.
+   */
+  private thinnedSet(zoom: number): Set<PoiEntry> | null {
+    const cellPx = this.opts.thinOut ? thinCellPx(zoom, this.opts.fullDetailZoom) : 0
+    if (cellPx <= 0) {
+      this.thinKept = null
+      this.setThinned(false)
+      return null
+    }
+    const level = Math.floor(zoom)
+    if (this.thinKept === null || this.thinZoom !== level) {
+      const candidates = this.entries.filter((e) => kindForZoom(e.kind, zoom, this.opts))
+      this.thinKept = thinPois(candidates, zoom, cellPx)
+      this.thinZoom = level
+      this.setThinned(this.thinKept.size < candidates.length)
+    }
+    return this.thinKept
+  }
+
+  private setThinned(next: boolean): void {
+    if (next === this.thinned) return
+    this.thinned = next
+    this.opts.onThinChange?.(next)
+  }
+
+  /** Resizes the live markers when the zoom crosses into a different dot size. */
+  private applyMarkerScale(zoom: number): void {
+    const scale = poiMarkerScale(zoom, this.opts.fullDetailZoom)
+    if (scale === this.markerScale) return
+    this.markerScale = scale
+    for (const entry of this.entries) {
+      entry.marker?.setRadius(scaledMarkerRadius(KIND_RADIUS[entry.kind], scale))
+      entry.marker?.setStyle({ weight: scale >= 0.85 ? 2 : 1 })
     }
   }
 

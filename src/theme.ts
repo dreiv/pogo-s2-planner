@@ -21,7 +21,8 @@ export const CELL_FILL_OPACITY = {
   occupied: 0.25,
   free: 0.12,
   'free-uncertain': 0.22,
-  unknown: 0.1
+  // No data is a warning about missing coverage, so it is tinted much more than the S17 states.
+  unknown: 0.3
 } as const
 
 export const MARK_STATUS_COLORS = {

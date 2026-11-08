@@ -25,12 +25,13 @@ export interface SettingsData {
   s14MinZoom: number
   s17MinZoom: number
   showPois: boolean
+  showGyms: boolean
+  showStops: boolean
+  /** Non-game POIs (places in the Wayfarer data with no active game object). */
   showOtherPois: boolean
-  stopGymOnly: boolean
   showRange: boolean
   rangeRadius: number
   rangeCenter: [number, number] | null
-  showPoiImages: boolean
   /** Which S17 cell states are tinted on the map (grid itself is controlled by showS17). */
   showCellOccupied: boolean
   showCellUncertain: boolean
@@ -49,12 +50,12 @@ export function defaultSettings(): SettingsData {
     s14MinZoom: 13,
     s17MinZoom: 16,
     showPois: true,
+    showGyms: true,
+    showStops: true,
     showOtherPois: true,
-    stopGymOnly: false,
     showRange: false,
     rangeRadius: 80,
     rangeCenter: null,
-    showPoiImages: true,
     showCellOccupied: true,
     showCellUncertain: true,
     // Free cells stay untinted by default (a whole city of green is noisy); opt-in in the legend.
@@ -117,12 +118,12 @@ export function validateSettings(raw: unknown): SettingsData {
     s14MinZoom: clampedNumber(s.s14MinZoom, ZOOM_MIN, ZOOM_MAX, def.s14MinZoom),
     s17MinZoom: clampedNumber(s.s17MinZoom, ZOOM_MIN, ZOOM_MAX, def.s17MinZoom),
     showPois: bool(s.showPois, def.showPois),
+    showGyms: bool(s.showGyms, def.showGyms),
+    showStops: bool(s.showStops, def.showStops),
     showOtherPois: bool(s.showOtherPois, def.showOtherPois),
-    stopGymOnly: bool(s.stopGymOnly, def.stopGymOnly),
     showRange: bool(s.showRange, def.showRange),
     rangeRadius: clampedNumber(s.rangeRadius, RANGE_RADIUS_MIN, RANGE_RADIUS_MAX, def.rangeRadius),
     rangeCenter: latLng(s.rangeCenter),
-    showPoiImages: bool(s.showPoiImages, def.showPoiImages),
     showCellOccupied: bool(s.showCellOccupied, def.showCellOccupied),
     showCellUncertain: bool(s.showCellUncertain, def.showCellUncertain),
     showCellFree: bool(s.showCellFree, def.showCellFree),

@@ -30,12 +30,49 @@ describe('buildCellPopupContent', () => {
   })
 
   it('leads with a plain-language title and reason, tokens stay available under Details', () => {
-    const el = buildCellPopupContent({ ...base, state: 'free-uncertain', s14PoiCount: 53, pois: [] })
+    const el = buildCellPopupContent({
+      ...base,
+      state: 'free-uncertain',
+      s14PoiCount: 53,
+      pois: []
+    })
     expect(el.querySelector('.cell-popup-title')?.textContent).toBe('Free, data may be incomplete')
     expect(el.querySelector('.cell-popup-why')?.textContent).toContain('53 POIs')
     const details = el.querySelector('details')
     expect(details?.textContent).toContain('S17: 47455d0c')
     expect(details?.textContent).toContain('State: free-uncertain')
+  })
+
+  it('on a no-data cell, says where to look and links to Wayfarer', () => {
+    const el = buildCellPopupContent({
+      ...base,
+      state: 'unknown',
+      lat: 45.763568,
+      lng: 21.222723,
+      pois: []
+    })
+    expect(el.querySelector('.cell-popup-title')?.textContent).toBe('No data')
+    const action = el.querySelector('.cell-popup-action')
+    expect(action?.textContent).toContain('Import panel')
+    const coords = action?.querySelector('code.cell-popup-coords') as HTMLElement | null
+    expect(coords?.textContent).toBe('45.76357, 21.22272')
+    expect(coords?.style.userSelect).toBe('all')
+    const link = action?.querySelector('a')
+    expect(link?.getAttribute('href')).toBe('https://wayfarer.scopely.com/mapview?z=16')
+    expect(link?.getAttribute('rel')).toContain('noopener')
+    expect(el.textContent).not.toContain('POIs: 0')
+  })
+
+  it('a no-data cell without coordinates still gives the instruction', () => {
+    const el = buildCellPopupContent({ ...base, state: 'unknown', pois: [] })
+    expect(el.querySelector('.cell-popup-action')?.textContent).toContain('this area')
+    expect(el.querySelector('code')).toBeNull()
+  })
+
+  it('other states have no Wayfarer action and keep the POI count', () => {
+    const el = buildCellPopupContent({ ...base, state: 'free', pois: [] })
+    expect(el.querySelector('.cell-popup-action')).toBeNull()
+    expect(el.textContent).toContain('POIs: 0')
   })
 
   it('still renders for a state it does not know (raw state only, no title)', () => {

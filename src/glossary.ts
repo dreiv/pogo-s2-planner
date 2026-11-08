@@ -36,7 +36,7 @@ export const TERMS = {
   },
   noData: {
     label: 'No data',
-    text: 'Part of the map you have no Wayfarer data for. Cells there are not necessarily free: the app simply knows nothing about them.'
+    text: 'Part of the map you have no Wayfarer data for. Cells there are not necessarily free: the app simply knows nothing about them. Open Wayfarer, search that area and import the response to fill it in.'
   },
   incompleteData: {
     label: 'Incomplete data',

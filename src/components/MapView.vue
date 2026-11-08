@@ -38,15 +38,20 @@ const currentZoom = ref(settings.zoom)
 // close to it, instead of leaving them wondering where the other POIs are.
 const poiHint = computed<string | null>(() =>
   settings.showPois &&
-  !settings.stopGymOnly &&
   currentZoom.value >= POI_HINT_MIN_ZOOM &&
   currentZoom.value < POI_FULL_DETAIL_ZOOM
     ? `Zoom in to ${POI_FULL_DETAIL_ZOOM}+ to see Power Spots and other POIs`
     : null
 )
 
+// True while the POI layer is hiding some stops/gyms to keep the zoomed-out map readable.
+const poisThinned = ref(false)
+const thinHint = computed<string | null>(() =>
+  settings.showPois && poisThinned.value ? 'Showing a sample of stops, zoom in for all' : null
+)
+
 const gridHint = computed(() =>
-  [gridHints.s14, gridHints.s17, poiHint.value].filter(Boolean).join(' · ')
+  [gridHints.s14, gridHints.s17, thinHint.value, poiHint.value].filter(Boolean).join(' · ')
 )
 
 const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
@@ -59,6 +64,18 @@ const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
   unknown: { fill: CELL_STATE_COLORS.unknown, opacity: CELL_FILL_OPACITY.unknown }
 }
 
+/**
+ * Coverage is per S14 cell, so "no data" is drawn on the S14 grid: every S14 cell that was not
+ * imported gets the gray tint, visible from the S14 minimum zoom (the S17 grid appears much later).
+ */
+function makeS14CellStyle(): CellStyleFn {
+  const covered = new Set(dataset.cells.map((c) => c.token))
+  return (token: string) =>
+    covered.has(token) || !settings.showCellUnknown
+      ? null
+      : { fillColor: CELL_COLORS.unknown.fill, fillOpacity: CELL_COLORS.unknown.opacity }
+}
+
 function makeS17CellStyle(): CellStyleFn {
   const markMap = marks.markByToken
   // The resolver is memoized per dataset revision and shared with the side panel.
@@ -67,7 +84,10 @@ function makeS17CellStyle(): CellStyleFn {
     const state = stateOf(token)
     const c = CELL_COLORS[state]
     // A state switched off in the legend is drawn untinted (opacity 0), like the old "free".
-    const opacity = isCellStateVisible(state, settings) ? c.opacity : 0
+    // "No data" is already tinted by the S14 grid underneath, so S17 skips it there (no double tint).
+    const s14TintsNoData = settings.showS14 && settings.s14MinZoom <= settings.s17MinZoom
+    const hidden = !isCellStateVisible(state, settings) || (state === 'unknown' && s14TintsNoData)
+    const opacity = hidden ? 0 : c.opacity
     const mark = markMap.get(token)
     if (mark && !settings.hiddenMarkStatuses.includes(mark.status)) {
       return {
@@ -99,6 +119,8 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
     s14Token: s14,
     state,
     s14PoiCount: s14Cell ? s14Cell.count : null,
+    lat,
+    lng,
     pois: cellPois.map((p) => ({ id: p.id, title: p.title }))
   })
 
@@ -126,6 +148,7 @@ function syncGridLayers(): void {
       maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s14,
       weight: 2,
+      cellStyle: makeS14CellStyle(),
       onHint: (message) => {
         gridHints.s14 = message
       }
@@ -163,20 +186,25 @@ function syncPoiLayer(): void {
   if (settings.showPois && !poiLayer) {
     poiLayer = new PoiLayer(map, {
       fullDetailZoom: POI_FULL_DETAIL_ZOOM,
+      showGyms: settings.showGyms,
+      showStops: settings.showStops,
       showOther: settings.showOtherPois,
-      stopGymOnly: settings.stopGymOnly,
-      showImages: settings.showPoiImages
+      thinOut: true,
+      onThinChange: (thinned) => {
+        poisThinned.value = thinned
+      }
     })
     poiLayer.setPois(dataset.pois)
     lastPoiRevision = dataset.revision
   } else if (!settings.showPois && poiLayer) {
     poiLayer.destroy()
     poiLayer = null
+    poisThinned.value = false
   } else if (poiLayer) {
     poiLayer.setOptions({
-      showOther: settings.showOtherPois,
-      stopGymOnly: settings.stopGymOnly,
-      showImages: settings.showPoiImages
+      showGyms: settings.showGyms,
+      showStops: settings.showStops,
+      showOther: settings.showOtherPois
     })
     if (dataset.revision !== lastPoiRevision) {
       poiLayer.setPois(dataset.pois)
@@ -256,12 +284,19 @@ watch(
 )
 
 watch(
-  () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly, settings.showPoiImages] as const,
+  () => [settings.showPois, settings.showGyms, settings.showStops, settings.showOtherPois] as const,
   () => syncPoiLayer()
 )
 
 watch(
-  () => [settings.showRange, settings.rangeRadius, settings.rangeCenter, settings.showS17, settings.showS14] as const,
+  () =>
+    [
+      settings.showRange,
+      settings.rangeRadius,
+      settings.rangeCenter,
+      settings.showS17,
+      settings.showS14
+    ] as const,
   () => syncRangeLayer()
 )
 
@@ -269,6 +304,7 @@ watch(
   () => dataset.revision,
   () => {
     syncPoiLayer()
+    s14Layer?.setCellStyle(makeS14CellStyle())
     s17Layer?.setCellStyle(makeS17CellStyle())
   }
 )
@@ -284,6 +320,7 @@ watch(
       settings.hiddenMarkStatuses.join(',')
     ] as const,
   () => {
+    s14Layer?.setCellStyle(makeS14CellStyle())
     s17Layer?.setCellStyle(makeS17CellStyle())
   }
 )

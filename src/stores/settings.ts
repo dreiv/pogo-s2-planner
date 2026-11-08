@@ -73,8 +73,12 @@ export const useSettingsStore = defineStore('settings', {
       this.showOtherPois = !this.showOtherPois
       persist(this.$state)
     },
-    toggleStopGymOnly(): void {
-      this.stopGymOnly = !this.stopGymOnly
+    toggleShowGyms(): void {
+      this.showGyms = !this.showGyms
+      persist(this.$state)
+    },
+    toggleShowStops(): void {
+      this.showStops = !this.showStops
       persist(this.$state)
     },
     toggleShowRange(): void {
@@ -87,10 +91,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     setRangeCenter(center: [number, number] | null): void {
       this.rangeCenter = center
-      persist(this.$state)
-    },
-    toggleShowPoiImages(): void {
-      this.showPoiImages = !this.showPoiImages
       persist(this.$state)
     },
     /** Shows/hides the tint of one S17 cell state. */

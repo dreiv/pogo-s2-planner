@@ -26,7 +26,7 @@ describe('buildPoiPopupContent', () => {
       imageUrl: 'https://lh3.googleusercontent.com/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
       game: [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }]
     })
-    const el = buildPoiPopupContent(poi, 'stop', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'stop', { onResize: noopResize })
     const img = el.querySelector('img.poi-photo') as HTMLImageElement | null
     expect(img).not.toBeNull()
     expect(img!.src).toContain('=s320')
@@ -38,7 +38,7 @@ describe('buildPoiPopupContent', () => {
         'https://lh3.googleusercontent.com/AbCdEfGhIjKlMnOpQrStUvWxYz012345?Expires=123&Signature=abc',
       game: [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }]
     })
-    const el = buildPoiPopupContent(poi, 'stop', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'stop', { onResize: noopResize })
     expect(el.querySelector('img')).toBeNull()
   })
 
@@ -47,7 +47,7 @@ describe('buildPoiPopupContent', () => {
       imageUrl: 'https://lh3.googleusercontent.com/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
       game: []
     })
-    const el = buildPoiPopupContent(poi, 'other', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'other', { onResize: noopResize })
     expect(el.querySelector('img')).toBeNull()
   })
 
@@ -56,16 +56,7 @@ describe('buildPoiPopupContent', () => {
       imageUrl: 'https://lh3.googleusercontent.com/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
       game: [{ entity: 'POWERSPOT', status: 'ACTIVE', brand: 'HOLOHOLO' }]
     })
-    const el = buildPoiPopupContent(poi, 'powerspot', { showImages: true, onResize: noopResize })
-    expect(el.querySelector('img')).toBeNull()
-  })
-
-  it('showImages=false produces no img', () => {
-    const poi = makePoi({
-      imageUrl: 'https://lh3.googleusercontent.com/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
-      game: [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }]
-    })
-    const el = buildPoiPopupContent(poi, 'stop', { showImages: false, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'powerspot', { onResize: noopResize })
     expect(el.querySelector('img')).toBeNull()
   })
 
@@ -74,7 +65,7 @@ describe('buildPoiPopupContent', () => {
       title: '<script>alert("xss")</script>',
       imageUrl: ''
     })
-    const el = buildPoiPopupContent(poi, 'stop', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'stop', { onResize: noopResize })
     const scriptEl = el.querySelector('script')
     expect(scriptEl).toBeNull()
     const strong = el.querySelector('strong')
@@ -87,7 +78,7 @@ describe('buildPoiPopupContent', () => {
       imageUrl: 'https://lh4.googleusercontent.com/ZzYyXxWwVvUuTtSsRrQqPpOoNnMmLlKk',
       game: [{ entity: 'GYM', status: 'ACTIVE', brand: 'HOLOHOLO' }]
     })
-    const el = buildPoiPopupContent(poi, 'gym', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'gym', { onResize: noopResize })
     const img = el.querySelector('img.poi-photo')
     expect(img).not.toBeNull()
   })
@@ -97,7 +88,7 @@ describe('buildPoiPopupContent', () => {
       imageUrl: '',
       game: [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }]
     })
-    const el = buildPoiPopupContent(poi, 'stop', { showImages: true, onResize: noopResize })
+    const el = buildPoiPopupContent(poi, 'stop', { onResize: noopResize })
     expect(el.querySelector('img')).toBeNull()
   })
 })

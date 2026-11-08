@@ -30,11 +30,11 @@ function makeSettings(): ExportedSettings {
     s17MinZoom: 16,
     showPois: true,
     showOtherPois: false,
-    stopGymOnly: true,
+    showGyms: true,
+    showStops: false,
     showRange: false,
     rangeRadius: 100,
     rangeCenter: [45.71, 21.31],
-    showPoiImages: true,
     showCellOccupied: true,
     showCellUncertain: false,
     showCellFree: true,
@@ -209,7 +209,7 @@ describe('parseBackup', () => {
     expect(result.marks[0]!.updatedAt).toBe(12345)
   })
 
-  it('old backup without showPoiImages defaults to true', () => {
+  it('old backup with retired POI keys gets the per-kind toggles on', () => {
     const file: BackupFile = {
       schemaVersion: SCHEMA_VERSION,
       exportedAt: 0,
@@ -217,22 +217,18 @@ describe('parseBackup', () => {
       settings: {
         center: [45.7, 21.3],
         zoom: 13,
-        showS14: false,
-        showS17: false,
-        s14MinZoom: 12,
-        s17MinZoom: 16,
         showPois: true,
         showOtherPois: true,
-        stopGymOnly: false,
-            showRange: false,
-        rangeRadius: 80,
-        rangeCenter: null
-        // showPoiImages intentionally omitted (old backup)
+        stopGymOnly: true,
+        showPoiImages: false
+        // showGyms / showStops intentionally omitted (old backup)
       } as unknown as ExportedSettings
     }
     const result = parseBackup(file)
     expect(result.ok).toBe(true)
-    expect(result.settings.showPoiImages).toBe(true)
+    expect(result.settings.showGyms).toBe(true)
+    expect(result.settings.showStops).toBe(true)
+    expect(result.settings.showOtherPois).toBe(true)
   })
 })
 
@@ -286,7 +282,12 @@ describe('sanitizeDataset', () => {
   it('drops cells whose token is not hex and keeps lowercase tokens', () => {
     const r = sanitizeDataset({
       pois: [],
-      cells: [goodCell, { ...goodCell, token: 'ZZ' }, { ...goodCell, token: '' }, { ...goodCell, token: '47455D02' }]
+      cells: [
+        goodCell,
+        { ...goodCell, token: 'ZZ' },
+        { ...goodCell, token: '' },
+        { ...goodCell, token: '47455D02' }
+      ]
     })
     expect(r.cells.map((c) => c.token)).toEqual(['47455d01', '47455d02'])
     expect(r.droppedCells).toBe(2)
@@ -327,7 +328,10 @@ describe('sanitizeDataset', () => {
   })
 
   it('malformed game entries are skipped, not fatal', () => {
-    const r = sanitizeDataset({ pois: [{ ...goodPoi, game: [null, 3, { entity: 'GYM' }] }], cells: [] })
+    const r = sanitizeDataset({
+      pois: [{ ...goodPoi, game: [null, 3, { entity: 'GYM' }] }],
+      cells: []
+    })
     expect(r.pois[0]!.game).toEqual([{ entity: 'GYM', status: '', brand: '' }])
   })
 })

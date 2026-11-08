@@ -14,7 +14,7 @@ export const OCCUPANCY_TEXT: Record<CellState, string> = {
   occupied: 'Occupied: an active stop or gym is already here',
   free: 'Free: no active stop or gym here',
   'free-uncertain': 'Free, but this S14 cell has incomplete data',
-  unknown: 'No data for this area yet'
+  unknown: 'No data for this area yet: import it from Wayfarer'
 }
 
 /** Why a cell has its state, in plain words. `s14Count` is the POI count Wayfarer reported. */
