@@ -1,7 +1,4 @@
-/**
- * POI popup content builder — creates DOM elements (no innerHTML).
- * Image is only included for stop/gym with a stable URL.
- */
+// DOM nodes + textContent only (no innerHTML); photos only for stop/gym with a stable URL.
 import type { ParsedPoi } from '../core/wayfarer/parse'
 import type { PoiKind } from '../core/classify'
 import { stablePoiImageUrl } from '../core/wayfarer/image'
@@ -11,7 +8,6 @@ export interface PoiPopupOptions {
   onResize: () => void
 }
 
-/** Human-readable label for each POI kind (used on the badge). */
 const KIND_LABEL: Record<PoiKind, string> = {
   stop: 'PokéStop',
   gym: 'Gym',
@@ -19,11 +15,6 @@ const KIND_LABEL: Record<PoiKind, string> = {
   other: 'Other'
 }
 
-/**
- * Build the popup content as a DOM element.
- * Uses textContent for all text (safe against injection).
- * Image is only added for stop/gym with a stable URL and showImages=true.
- */
 export function buildPoiPopupContent(
   poi: ParsedPoi,
   kind: PoiKind,
@@ -32,7 +23,6 @@ export function buildPoiPopupContent(
   const container = document.createElement('div')
   container.className = 'poi-popup'
 
-  // Header: kind badge + title
   const header = document.createElement('div')
   header.className = 'poi-popup-header'
 
@@ -49,7 +39,6 @@ export function buildPoiPopupContent(
   }
   container.appendChild(header)
 
-  // Description
   if (poi.description) {
     const descEl = document.createElement('p')
     descEl.className = 'poi-popup-desc'
@@ -57,7 +46,6 @@ export function buildPoiPopupContent(
     container.appendChild(descEl)
   }
 
-  // Address
   if (poi.address) {
     const addrEl = document.createElement('small')
     addrEl.className = 'poi-popup-address'
@@ -65,7 +53,6 @@ export function buildPoiPopupContent(
     container.appendChild(addrEl)
   }
 
-  // Image: only for stop/gym, stable URL, and showImages enabled
   if (opts.showImages && (kind === 'stop' || kind === 'gym')) {
     const src = stablePoiImageUrl(poi.imageUrl, 320)
     if (src) {

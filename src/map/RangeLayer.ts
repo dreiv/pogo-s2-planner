@@ -1,23 +1,13 @@
-/**
- * Range layer — draws a circle with configurable radius around a center point.
- * Center is set by clicking on the map or via "Use my location" button.
- * Highlights S17/S14 cells intersecting the circle.
- */
 import L from 'leaflet'
 import { cellsIntersectingCircle } from '../core/geo'
 import { cellVertices } from '../core/s2'
 import { RANGE_COLORS } from '../theme'
 
 export interface RangeLayerOptions {
-  /** Radius in meters. Default: 80. */
   radius: number
-  /** Minimum radius. Default: 20. */
   minRadius: number
-  /** Maximum radius. Default: 500. */
   maxRadius: number
-  /** Whether to show S17 cell highlights. */
   showS17: boolean
-  /** Whether to show S14 cell highlights. */
   showS14: boolean
 }
 
@@ -44,7 +34,6 @@ export class RangeLayer {
     this.cellGroup = L.layerGroup()
     this.cellGroup.addTo(map)
 
-    // Click on map to set center
     this.map.on('click', this.handleMapClick)
   }
 
@@ -77,7 +66,6 @@ export class RangeLayer {
     if (!this.center) return
     const [lat, lng] = this.center
 
-    // Remove old circle and marker
     if (this.circle) {
       this.circle.remove()
       this.circle = null
@@ -87,7 +75,6 @@ export class RangeLayer {
       this.centerMarker = null
     }
 
-    // Draw circle
     this.circle = L.circle([lat, lng], {
       radius: this.opts.radius,
       color: RANGE_COLORS.circle,
@@ -97,7 +84,6 @@ export class RangeLayer {
       dashArray: '6 4'
     }).addTo(this.map)
 
-    // Center marker (divIcon, not default Leaflet marker)
     const icon = L.divIcon({
       className: 'range-center-icon',
       html: `<div style="width:12px;height:12px;border-radius:50%;background:${RANGE_COLORS.circle};border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>`,
@@ -106,7 +92,6 @@ export class RangeLayer {
     })
     this.centerMarker = L.marker([lat, lng], { icon, interactive: false }).addTo(this.map)
 
-    // Highlight intersecting cells
     this.updateCellHighlights()
   }
 

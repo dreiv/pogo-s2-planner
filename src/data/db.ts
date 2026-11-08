@@ -1,7 +1,3 @@
-/**
- * Dexie database for Wayfarer data persistence.
- * Only this file imports dexie.
- */
 import Dexie from 'dexie'
 import type { ParsedCell, ParsedPoi } from '../core/wayfarer/parse'
 

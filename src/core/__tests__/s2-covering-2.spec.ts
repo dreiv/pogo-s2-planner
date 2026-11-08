@@ -29,7 +29,6 @@ describe('cellsCoveringBounds (extended)', () => {
   it('500 random points in bounds are all covered', () => {
     const { tokens } = cellsCoveringBounds(bounds, 14, 1500)
     const tokenSet = new Set(tokens)
-    // Generate pseudo-random points in bounds
     let seed = 42
     function rand(): number {
       seed = (seed * 16807) % 2147483647

@@ -1,6 +1,3 @@
-/**
- * Dataset store — loads Wayfarer data from IndexedDB, handles import/clear.
- */
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
 import { db, type ImportRecord } from '../data/db'
@@ -88,15 +85,11 @@ export const useDatasetStore = defineStore('dataset', {
       this.revision++
     },
 
-    /**
-     * Import one or more parsed documents. Replaces all tables in a single
-     * transaction (fixes stale-data / ConstraintError issues).
-     */
+    /** Replaces all tables in one transaction; clearing first avoids ConstraintError. */
     async importDocuments(docs: { name: string; json: unknown }[]): Promise<ImportSummary> {
       const now = Date.now()
       const parsed = docs.map((d) => ({ name: d.name, result: parseWayfarer(d.json) }))
 
-      // Merge all documents into existing state
       const incomings = parsed.map((p, i) => ({
         cells: p.result.cells,
         pois: p.result.pois,
@@ -107,7 +100,6 @@ export const useDatasetStore = defineStore('dataset', {
         incomings
       )
 
-      // Build import records
       const records: ImportRecord[] = parsed.map((p, i) => ({
         id: `${now}-${i}-${Math.random().toString(36).slice(2, 8)}`,
         fileName: p.name,
@@ -118,8 +110,6 @@ export const useDatasetStore = defineStore('dataset', {
         warningCount: p.result.warnings.length
       }))
 
-      // Persist: REPLACE tables in a single transaction.
-      // Clearing first avoids ConstraintError / stale-record issues.
       await db.transaction('rw', [db.pois, db.cells, db.imports], async () => {
         await db.pois.clear()
         await db.cells.clear()
@@ -128,13 +118,12 @@ export const useDatasetStore = defineStore('dataset', {
         await db.imports.bulkAdd(records)
       })
 
-      // Update state ONLY after commit
+      // Update state only after commit
       this.pois = markRaw(merged.pois)
       this.cells = markRaw(merged.cells)
       this.imports = [...records.reverse(), ...this.imports]
       this.revision++
 
-      // Build summary
       const allPois = parsed.flatMap((p) => p.result.pois)
       const allWarnings = parsed.flatMap((p) => p.result.warnings)
       const kinds = countByKind(allPois)
@@ -164,7 +153,6 @@ export const useDatasetStore = defineStore('dataset', {
       }
     },
 
-    /** Wrapper for single-document import (backward compat). */
     async importFromJson(json: unknown, fileName: string): Promise<ImportSummary> {
       return this.importDocuments([{ name: fileName, json }])
     },

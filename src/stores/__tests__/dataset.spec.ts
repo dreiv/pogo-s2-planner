@@ -1,6 +1,3 @@
-/**
- * Dataset store tests — uses fake-indexeddb for IndexedDB polyfill.
- */
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { isReactive } from 'vue'
@@ -45,9 +42,7 @@ const sampleJson = {
 }
 
 beforeEach(async () => {
-  // Fresh Pinia per test
   setActivePinia(createPinia())
-  // Clear all tables
   await db.pois.clear()
   await db.cells.clear()
   await db.imports.clear()
@@ -88,7 +83,6 @@ describe('dataset store', () => {
     const store = useDatasetStore()
     await store.importDocuments([{ name: 'first.json', json: sampleJson }])
 
-    // Import again with same data — should not throw
     const summary = await store.importDocuments([{ name: 'second.json', json: sampleJson }])
     expect(summary.poisUnchanged).toBe(2)
     expect(store.pois.length).toBe(2)
@@ -102,7 +96,6 @@ describe('dataset store', () => {
       { name: 'b.json', json: sampleJson }
     ])
     expect(summary.documents).toBe(2)
-    // Same POIs in both docs → deduped
     expect(store.pois.length).toBe(2)
   })
 

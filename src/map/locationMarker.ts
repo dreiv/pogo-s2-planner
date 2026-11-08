@@ -1,7 +1,3 @@
-/**
- * Shared user-location marker + accuracy circle.
- * Used by locateMe so the marker styling is defined in one place.
- */
 import L from 'leaflet'
 import { LOCATION_COLORS } from '../theme'
 
@@ -10,10 +6,6 @@ export interface LocationMarker {
   accuracy: L.Circle
 }
 
-/**
- * Create (or move) the user-location marker and accuracy circle on the map.
- * Returns the layers so the caller can remove them on cleanup.
- */
 export function drawLocationMarker(
   map: L.Map,
   lat: number,
@@ -41,7 +33,6 @@ export function drawLocationMarker(
   return { marker, accuracy: accuracyCircle }
 }
 
-/** Remove a location marker + accuracy circle from the map. */
 export function removeLocationMarker(loc: LocationMarker | null): void {
   if (!loc) return
   loc.marker.remove()

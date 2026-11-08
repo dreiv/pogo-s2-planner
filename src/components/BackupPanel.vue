@@ -92,7 +92,6 @@ async function importFromInput(e: Event): Promise<void> {
     return
   }
 
-  // Apply marks
   await marks.bulkSet(
     result.marks.map((m) => ({
       token17: m.token17,
@@ -102,11 +101,9 @@ async function importFromInput(e: Event): Promise<void> {
     }))
   )
 
-  // Apply settings
   const s = result.settings
   settings.setCenter(s.center)
   settings.setZoom(s.zoom)
-  // Toggles: set directly via store state
   settings.showS14 = s.showS14
   settings.showS17 = s.showS17
   settings.s14MinZoom = s.s14MinZoom
@@ -122,7 +119,6 @@ async function importFromInput(e: Event): Promise<void> {
   message.value = `Imported: ${result.marks.length} mark(s), settings restored.`
   error.value = ''
 
-  // Reset input so same file can be re-imported
   input.value = ''
 }
 </script>

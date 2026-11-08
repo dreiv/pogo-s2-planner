@@ -10,10 +10,6 @@ const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 const OSM_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
-/**
- * Create a Leaflet map instance with an OSM base tile layer.
- * Uses canvas renderer for performance with many polygons.
- */
 export function createMap(container: HTMLElement, options: MapOptions): L.Map {
   const map = L.map(container, {
     center: options.center,

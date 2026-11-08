@@ -2,11 +2,6 @@
 import { ref } from 'vue'
 import { registerSW } from 'virtual:pwa-register'
 
-// Root cause of the "dialog never goes away" bug: with registerType 'prompt' the new
-// service worker stays in the `waiting` state until it receives SKIP_WAITING.
-// A plain `location.reload()` keeps the OLD worker in control, so the new one is still
-// waiting after the reload and `onNeedRefresh` fires again. `updateSW(true)` posts
-// SKIP_WAITING and reloads once the new worker has taken control.
 const needRefresh = ref(false)
 const busy = ref(false)
 
@@ -15,22 +10,30 @@ const updateSW = registerSW({
     needRefresh.value = true
   },
   onRegisteredSW(_url, registration) {
-    // Look for a new version once an hour while the app stays open.
     if (registration) window.setInterval(() => void registration.update(), 60 * 60 * 1000)
   }
 })
 
+// Fallback when the waiting worker never takes over: drop workers and app-shell
+// caches so the reload fetches the latest build (IndexedDB data is untouched).
+async function hardReset(): Promise<void> {
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  await Promise.all(registrations.map((r) => r.unregister()))
+  await Promise.all((await caches.keys()).map((k) => caches.delete(k)))
+  window.location.reload()
+}
+
 async function applyUpdate(): Promise<void> {
   busy.value = true
   try {
+    // On success the plugin reloads the page itself once the new worker controls it.
     await updateSW(true)
+    await new Promise((resolve) => window.setTimeout(resolve, 4000))
+    await hardReset()
   } catch (err) {
     console.error('PWA update failed:', err)
     busy.value = false
-    return
   }
-  // Safety net: if the page was not reloaded by the new worker, reload ourselves.
-  window.setTimeout(() => window.location.reload(), 3000)
 }
 
 function dismiss(): void {

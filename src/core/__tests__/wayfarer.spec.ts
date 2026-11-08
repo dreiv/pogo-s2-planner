@@ -103,8 +103,6 @@ const sample = {
   }
 }
 
-// --- Parser tests ---
-
 describe('parseWayfarer', () => {
   it('parses full response format', () => {
     const result = parseWayfarer(sample)
@@ -219,8 +217,6 @@ describe('parseWayfarer', () => {
     expect(result.warnings.length).toBeGreaterThan(0)
   })
 })
-
-// --- Merge tests ---
 
 describe('mergeImports', () => {
   const base = parseWayfarer(sample)

@@ -124,7 +124,6 @@ describe('cellVertices', () => {
   })
 })
 
-// Haversine distance in meters
 function haversine(a: [number, number], b: [number, number]): number {
   const R = 6371000
   const dLat = ((b[0] - a[0]) * Math.PI) / 180

@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MapView from '../components/MapView.vue'
 
-// Mock leaflet
 vi.mock('leaflet', () => {
   const mockMap = {
     on: vi.fn(),
@@ -78,6 +77,5 @@ describe('MapView', () => {
   it('cleans up on unmount', () => {
     const wrapper = mount(MapView)
     wrapper.unmount()
-    // No error thrown = pass
   })
 })

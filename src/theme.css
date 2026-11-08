@@ -1,48 +1,32 @@
-/**
- * Centralized surface color tokens (CSS custom properties).
- *
- * These cover the "chrome" of the UI: backgrounds, text and borders.
- * Data-driven colors (POI kinds, cell states, marks) live in
- * theme.ts. Each token is defined once and consumed via var(--token).
- *
- * Light values are the defaults; dark values are overridden under
- * prefers-color-scheme: dark.
- */
+/* Surface tokens (backgrounds, text, borders): light defaults, dark overrides under prefers-color-scheme. Data colors live in theme.ts. */
 :root {
-  /* Surfaces */
   --bg-app: #ffffff;
   --bg-panel: #ffffff;
   --bg-subtle: #f9fafb;
   --bg-hover: #f3f4f6;
 
-  /* Text */
   --text-primary: #333333;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
 
-  /* Borders */
   --border: #d1d5db;
   --border-subtle: #e5e7eb;
 
-  /* Accent: blue (primary action / links / S14) */
   --accent-blue: #3b82f6;
   --accent-blue-strong: #2563eb;
   --accent-blue-bg: #eff6ff;
   --accent-blue-bg-hover: #dbeafe;
   --accent-blue-text: #1e40af;
 
-  /* Accent: amber (warning / near-threshold / uncertain) */
   --accent-amber: #f59e0b;
   --accent-amber-bg: #fffbeb;
   --accent-amber-bg-hover: #fef3c7;
   --accent-amber-text: #92400e;
 
-  /* Accent: red (danger / occupied / rejected) */
   --accent-red: #ef4444;
   --accent-red-bg: #fef2f2;
   --accent-red-text: #991b1b;
 
-  /* Status text */
   --text-success: #166534;
 
   /* POI kinds (mirror of POI_COLORS in theme.ts) */
@@ -90,7 +74,6 @@
   }
 }
 
-/* POI popup card (Leaflet popup content) */
 .poi-popup {
   font-size: 13px;
   line-height: 1.45;
@@ -121,7 +104,6 @@
   color: var(--text-secondary);
 }
 
-/* Kind badge (pill) — solid color per kind, white text. */
 .poi-badge {
   display: inline-block;
   flex-shrink: 0;
@@ -151,7 +133,6 @@
   background: var(--poi-other);
 }
 
-/* POI popup photo (Leaflet popup content) */
 .poi-photo {
   display: block;
   width: 100%;
@@ -160,8 +141,7 @@
   border-radius: 6px;
 }
 
-/* Leaflet popup close button — larger, easier to tap.
-   Matches Leaflet's own selector specificity so this override wins. */
+/* Larger tap target; matches Leaflet's selector specificity so it wins. */
 .leaflet-container a.leaflet-popup-close-button {
   width: 28px;
   height: 28px;
@@ -175,8 +155,7 @@
   color: var(--text-primary);
 }
 
-/* Dark theme: match the Leaflet popup to the app chrome so the
-   (light) text tokens stay readable. Leaflet ships a white popup. */
+/* Leaflet ships a white popup; match it to the app chrome. */
 @media (prefers-color-scheme: dark) {
   .leaflet-popup-content-wrapper {
     background: var(--bg-panel);
@@ -188,7 +167,6 @@
   }
 }
 
-/* Phones: smaller popup cards */
 @media (max-width: 640px) {
   .poi-popup {
     font-size: 12px;

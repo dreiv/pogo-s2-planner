@@ -145,7 +145,6 @@ describe('parseBackup', () => {
       marks: [],
       settings: makeSettings()
     }
-    // Remove marks to simulate
     const noMarks = { ...file }
     delete (noMarks as Record<string, unknown>).marks
     const result = parseBackup(noMarks)
@@ -162,8 +161,8 @@ describe('parseBackup', () => {
     }
     const result = parseBackup(file)
     expect(result.ok).toBe(true)
-    expect(result.settings.zoom).toBe(13) // default
-    expect(result.settings.showS14).toBe(false) // default
+    expect(result.settings.zoom).toBe(13)
+    expect(result.settings.showS14).toBe(false)
   })
 
   it('handles partial settings (fills defaults)', () => {
@@ -177,7 +176,7 @@ describe('parseBackup', () => {
     expect(result.ok).toBe(true)
     expect(result.settings.zoom).toBe(15)
     expect(result.settings.showS14).toBe(true)
-    expect(result.settings.showS17).toBe(false) // default
+    expect(result.settings.showS17).toBe(false)
   })
 
   it('accepts all valid mark statuses', () => {
@@ -197,7 +196,6 @@ describe('parseBackup', () => {
 
   it('preserves note and updatedAt', () => {
     const marks = [makeMark('t1', 'propus', 'my note', 12345)]
-    // makeMark signature: (token17, status, note, updatedAt)
     const file = buildBackup(marks, makeSettings())
     const result = parseBackup(file)
     expect(result.ok).toBe(true)

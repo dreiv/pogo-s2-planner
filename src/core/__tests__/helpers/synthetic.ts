@@ -1,11 +1,7 @@
-/**
- * Deterministic synthetic dataset generator for performance benchmarks.
- * Uses a simple LCG (linear congruential generator) — NOT Math.random.
- */
+// Deterministic synthetic dataset (seeded LCG, no Math.random) for benchmarks.
 import type { ParsedCell, ParsedPoi, ParsedGameObject } from '../../wayfarer/parse'
 import { cellTokenAt } from '../../s2'
 
-/** Simple LCG: deterministic, no Math.random. */
 function lcg(seed: number): () => number {
   let s = seed >>> 0
   return () => {
@@ -14,10 +10,6 @@ function lcg(seed: number): () => number {
   }
 }
 
-/**
- * Generate a synthetic dataset with nPois POIs spread over a rectangle.
- * Deterministic for a given seed.
- */
 export function makeSyntheticDataset(
   nPois: number,
   seed = 1
@@ -72,7 +64,6 @@ export function makeSyntheticDataset(
     cellMap.set(s14, (cellMap.get(s14) ?? 0) + 1)
   }
 
-  // Build cells from distinct S14 tokens
   const cells: ParsedCell[] = []
   for (const [token, count] of cellMap) {
     cells.push({

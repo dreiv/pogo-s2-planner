@@ -1,21 +1,11 @@
-/**
- * Pre-computed POI index — groups POIs by S17 and S14 cell token.
- * Built once per dataset revision to avoid repeated cellTokenAt calls.
- */
 import type { ParsedPoi } from './wayfarer/parse'
 import { cellTokenAt, parentToken } from './s2'
 
 export interface PoiIndex {
-  /** S17 token → POIs in that cell. */
   poisByS17: Map<string, ParsedPoi[]>
-  /** S14 token → POIs in that cell. */
   poisByS14: Map<string, ParsedPoi[]>
 }
 
-/**
- * Build a POI index from a flat list of POIs.
- * Each POI is processed exactly once.
- */
 export function buildPoiIndex(pois: ParsedPoi[]): PoiIndex {
   const poisByS17 = new Map<string, ParsedPoi[]>()
   const poisByS14 = new Map<string, ParsedPoi[]>()

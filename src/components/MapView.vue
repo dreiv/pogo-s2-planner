@@ -32,9 +32,7 @@ let poiLayer: PoiLayer | null = null
 let rangeLayer: RangeLayer | null = null
 let flushMoveEndRef: (() => void) | null = null
 
-// --- Cell classification (memoized per dataset revision) ---
-// State is derived per visible S17 token, so empty S17 cells inside a covered
-// S14 cell are "free" too (not only cells that already contain a POI).
+// Cell state is derived per visible S17 token, so empty cells inside a covered S14 cell are "free" too.
 let cachedClassifyKey = ''
 let stateCache = new Map<string, CellState>()
 let s14Coverage = new Map<string, boolean>() // S14 token -> truncated
@@ -118,7 +116,6 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
 function syncGridLayers(): void {
   if (!map) return
 
-  // S14
   if (settings.showS14 && !s14Layer) {
     s14Layer = new S2GridLayer(map, {
       level: 14,
@@ -133,7 +130,6 @@ function syncGridLayers(): void {
     s14Layer = null
   }
 
-  // S17
   if (settings.showS17 && !s17Layer) {
     s17Layer = new S2GridLayer(map, {
       level: 17,
@@ -151,7 +147,6 @@ function syncGridLayers(): void {
     s17Layer = null
   }
 
-  // Ensure POI markers are on top of grid polygons
   poiLayer?.bringToFront()
 }
 
@@ -178,7 +173,6 @@ function syncPoiLayer(): void {
       stopGymOnly: settings.stopGymOnly,
       showImages: settings.showPoiImages
     })
-    // Only rebuild markers when the dataset actually changed
     if (dataset.revision !== lastPoiRevision) {
       poiLayer.setPois(dataset.pois)
       lastPoiRevision = dataset.revision
@@ -224,10 +218,8 @@ onMounted(() => {
     zoom: settings.zoom
   })
 
-  // Provide map context for child layers
   provide(MAP_CONTEXT_KEY, { map } satisfies MapContext)
 
-  // Persist center/zoom on move (debounced to avoid writing on every pan step)
   let moveEndTimer: ReturnType<typeof setTimeout> | null = null
   const flushMoveEnd = (): void => {
     if (moveEndTimer !== null) {
@@ -243,16 +235,13 @@ onMounted(() => {
     if (moveEndTimer !== null) clearTimeout(moveEndTimer)
     moveEndTimer = setTimeout(flushMoveEnd, 400)
   })
-  // Expose flush so onBeforeUnmount can flush pending writes
   flushMoveEndRef = flushMoveEnd
 
-  // Initial grid layers + POI layer + range layer
   syncGridLayers()
   syncPoiLayer()
   syncRangeLayer()
 })
 
-// React to grid toggle changes
 watch(
   () => [settings.showS14, settings.showS17, settings.s14MinZoom, settings.s17MinZoom] as const,
   () => {
@@ -264,39 +253,32 @@ watch(
   }
 )
 
-// React to POI display settings
 watch(
   () => [settings.showPois, settings.showOtherPois, settings.stopGymOnly, settings.showPoiImages] as const,
   () => syncPoiLayer()
 )
 
-// React to range settings
 watch(
   () => [settings.showRange, settings.rangeRadius, settings.rangeCenter, settings.showS17, settings.showS14] as const,
   () => syncRangeLayer()
 )
 
-// React to dataset changes (import/clear)
 watch(
   () => dataset.revision,
   () => {
-    cachedClassifyKey = '' // invalidate memo
-    cachedPoiIndex = null // invalidate POI index
+    cachedClassifyKey = ''
+    cachedPoiIndex = null
     syncPoiLayer()
-    // Update grid styles in-place (no destroy/recreate)
     if (s17Layer) {
       s17Layer.setCellStyle(makeS17CellStyle())
     }
-    // Ensure POI markers are on top
     poiLayer?.bringToFront()
   }
 )
 
-// React to marks changes
 watch(
   () => marks.revision,
   () => {
-    // Update S17 styles in-place (marks change colors)
     if (s17Layer) {
       s17Layer.setCellStyle(makeS17CellStyle())
     }
@@ -304,7 +286,6 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  // Flush pending center/zoom writes before tearing down
   if (flushMoveEndRef) flushMoveEndRef()
   if (cleanupLocate) cleanupLocate()
   if (s14Layer) { s14Layer.destroy(); s14Layer = null }

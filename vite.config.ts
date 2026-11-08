@@ -30,8 +30,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Cache ONLY the app shell (JS/CSS/HTML). Never cache OSM tiles
-        // (OSM tile policy) or any data endpoints.
+        // App shell only: OSM tiles and data are never cached (tile policy).
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.js', '**/*.css', '**/*.html'],
@@ -39,8 +38,6 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/tiles\//, /^\/data\//],
         runtimeCaching: [
           {
-            // Map tiles (OSM): network-only, never persisted
-            // (tile policy — no caching of third-party tiles).
             urlPattern: ({ url }) => url.hostname === 'tile.openstreetmap.org',
             handler: 'NetworkOnly'
           }

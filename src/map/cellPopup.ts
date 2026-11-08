@@ -1,6 +1,3 @@
-/**
- * Cell popup helper — shows a popup with S17 cell details.
- */
 import L from 'leaflet'
 
 export interface CellPopupData {

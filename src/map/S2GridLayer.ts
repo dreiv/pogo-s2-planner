@@ -1,13 +1,6 @@
-/**
- * S2 grid overlay layer.
- * Draws S2 cell polygons at a given level (14 or 17) for the current map bounds.
- * Uses canvas renderer, debounced updates, and an LRU vertex cache.
- */
 import L from 'leaflet'
 import { cellsCoveringBounds, cellVertices, type Bounds } from '../core/s2'
 import { shouldShowGrid } from '../core/grid-gating'
-
-// --- Vertex cache (LRU) ---
 
 const VERTEX_CACHE_SIZE = 2048
 
@@ -17,7 +10,6 @@ class VertexCache {
   get(token: string): [number, number][] | undefined {
     const v = this.map.get(token)
     if (v !== undefined) {
-      // Refresh: delete and re-insert to move to end (most recent)
       this.map.delete(token)
       this.map.set(token, v)
     }
@@ -29,7 +21,6 @@ class VertexCache {
       this.map.delete(token)
     }
     this.map.set(token, verts)
-    // Evict oldest if over capacity
     if (this.map.size > VERTEX_CACHE_SIZE) {
       const first = this.map.keys().next()
       if (!first.done) this.map.delete(first.value)
@@ -41,42 +32,25 @@ class VertexCache {
   }
 }
 
-// --- Layer options ---
-
-/** Per-cell style callback: returns fill properties for a given token. */
 export type CellStyleFn = (token: string) => {
   fillColor: string
   fillOpacity: number
-  /** Optional stroke color override. */
   color?: string
-  /** Optional stroke width override. */
   weight?: number
-  /** Optional dash pattern. */
   dashArray?: string
 } | null
 
 export interface S2GridLayerOptions {
-  /** S2 level: 14 or 17. */
   level: 14 | 17
-  /** Minimum zoom to show the grid. */
   minZoom: number
-  /** Maximum number of cells to draw. */
   maxCells: number
-  /** Stroke color. */
   color: string
-  /** Stroke width in px. */
   weight: number
-  /** Optional default dash pattern for the grid lines. */
   dashArray?: string
-  /** Optional per-cell style function. If null/absent, no fill. */
   cellStyle?: CellStyleFn
-  /** Optional click handler for cell popups. */
   onCellClick?: (token: string, lat: number, lng: number) => void
-  /** Called after polygons are (re)drawn. Use to re-order other layers. */
   onUpdated?: () => void
 }
-
-// --- Layer ---
 
 export class S2GridLayer {
   private layerGroup: L.LayerGroup
@@ -94,7 +68,6 @@ export class S2GridLayer {
     this.layerGroup = L.layerGroup()
     this.layerGroup.addTo(map)
 
-    // Create hint element
     this.hintEl = document.createElement('div')
     this.hintEl.className = 's2-grid-hint'
     this.hintEl.style.cssText =
@@ -103,11 +76,9 @@ export class S2GridLayer {
       'border-radius:4px;font-size:12px;pointer-events:none;display:none;'
     map.getContainer().appendChild(this.hintEl)
 
-    // Listen to map events
     this.map.on('moveend', this.handleMoveEnd)
     this.map.on('zoomend', this.handleMoveEnd)
 
-    // Initial draw
     this.update()
   }
 
@@ -116,7 +87,6 @@ export class S2GridLayer {
     this.debounceTimer = setTimeout(() => this.update(), 150)
   }
 
-  /** Compute cells for current bounds and draw polygons. */
   update(): void {
     if (this.destroyed) return
     const perfStart = import.meta.env.DEV ? performance.now() : 0
@@ -196,7 +166,6 @@ export class S2GridLayer {
       poly.addTo(this.layerGroup)
     }
 
-    // Notify that polygons were redrawn (e.g. to bring POI markers to front)
     this.opts.onUpdated?.()
 
     if (import.meta.env.DEV) {
@@ -205,19 +174,11 @@ export class S2GridLayer {
     }
   }
 
-  /**
-   * Update the cell style function and re-apply styles to existing polygons
-   * without recomputing S2 coverage or recreating polygons.
-   */
   setCellStyle(fn: CellStyleFn | undefined): void {
     this.opts.cellStyle = fn
     this.refreshStyles()
   }
 
-  /**
-   * Re-apply the current cell style to all existing polygons.
-   * Does NOT recalculate S2 coverage, recreate polygons, or touch the vertex cache.
-   */
   refreshStyles(): void {
     const fn = this.opts.cellStyle
     if (!fn) return
@@ -244,7 +205,6 @@ export class S2GridLayer {
     this.layerGroup.clearLayers()
   }
 
-  /** Remove the layer and clean up all resources. */
   destroy(): void {
     this.destroyed = true
     if (this.debounceTimer !== null) {

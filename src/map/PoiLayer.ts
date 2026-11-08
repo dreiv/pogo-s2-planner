@@ -1,8 +1,3 @@
-/**
- * POI marker layer — draws circle markers on the canvas renderer.
- * Colors/shapes differ per kind. Zoom-based filtering.
- * Popup with title, description, address, kind, status; image loaded lazily.
- */
 import L from 'leaflet'
 import type { ParsedPoi } from '../core/wayfarer/parse'
 import { poiKind, type PoiKind } from '../core/classify'
@@ -12,11 +7,8 @@ import { buildPoiPopupContent } from './poiPopup'
 export interface PoiLayerOptions {
   /** Minimum zoom to show all POI kinds. Below this, only stop/gym. */
   fullDetailZoom: number
-  /** Whether to show 'other' kind POIs. */
   showOther: boolean
-  /** Whether to show only stop/gym (hide powerspot and other). */
   stopGymOnly: boolean
-  /** Whether to show POI photos in popups. */
   showImages: boolean
 }
 
@@ -91,10 +83,6 @@ export class PoiLayer {
     this.rebuild()
   }
 
-  /**
-   * Bring all markers to the front of the canvas draw order.
-   * Needed after S2GridLayer redraws polygons (which appends them on top).
-   */
   bringToFront(): void {
     // POI markers live in their own pane (above grid polygons); nothing to reorder.
   }
@@ -122,7 +110,6 @@ export class PoiLayer {
         renderer: this.renderer
       })
 
-      // Lazy popup: build DOM on open, load image only then
       marker.bindPopup(
         () => {
           const el = buildPoiPopupContent(poi, kind, {

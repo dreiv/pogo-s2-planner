@@ -1,6 +1,3 @@
-/**
- * Tests for buildPoiPopupContent (jsdom environment).
- */
 import { describe, it, expect } from 'vitest'
 import { buildPoiPopupContent } from '../../map/poiPopup'
 import type { ParsedPoi } from '../../core/wayfarer/parse'

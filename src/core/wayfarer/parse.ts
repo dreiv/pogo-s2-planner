@@ -1,24 +1,14 @@
 /**
- * Wayfarer export parser — tolerant, no dependencies.
- *
- * Accepts: the full API response ({result:{data:[...]}}), just `result`
- * ({data:[...]}), or the bare array of cells.
- *
- * Real export shape (verified against a real response, Nov 2026):
- *  - Cells with data:  { metadata: { s2CellId, s2CellLevel, count, generatedTimestamp (string, ms) }, pois, cellId }
- *  - Cells with NO POIs: { cellId, pois: [] } — NO `metadata` at all. They still mean
- *    "this S14 cell was queried and is empty" => every S17 inside is free.
- *  - `snapshot` ("YYYY-MM-DD") and `cellLevel` live on `result`, not on each cell.
- *  - POI image is `mainImage`; the game brand is `gmo[].gameBrand` (value "HOLOHOLO").
- *
- * Legacy names (`imageUrl`, `gmo[].brand`) are still accepted so old fixtures/backups work.
- * Never throws: invalid pieces produce warnings.
+ * Tolerant Wayfarer export parser; never throws (invalid pieces become warnings).
+ * Accepts the full response ({result:{data:[...]}}), `result`, or the bare cell array.
+ * Real shape: cells with data carry `metadata` (s2CellId, count, generatedTimestamp);
+ * empty cells are just { cellId, pois: [] } and mean "queried and empty" (every S17 free).
+ * `snapshot` and `cellLevel` live on `result`; image is `mainImage`, brand is `gmo[].gameBrand`.
+ * Legacy `imageUrl` / `gmo[].brand` are still accepted.
  */
 
 /** A cell with count >= this value may have been cut off by the API. */
 export const TRUNCATION_THRESHOLD = 50
-
-// --- Output types (unchanged public shape) ---
 
 export interface ParsedGameObject {
   entity: string
@@ -33,7 +23,7 @@ export interface ParsedPoi {
   title: string
   description: string
   address: string
-  /** Raw `mainImage` URL as exported. Sanitize with `stablePoiImageUrl` before display. */
+  /** Raw URL as exported; sanitize with `stablePoiImageUrl` before display. */
   imageUrl: string
   communityContributed: boolean
   game: ParsedGameObject[]
@@ -57,8 +47,6 @@ export interface ParseResult {
   warnings: string[]
 }
 
-// --- Type guards / coercion (hand-written, no dependencies) ---
-
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
@@ -67,7 +55,6 @@ function str(v: unknown): string {
   return typeof v === 'string' ? v : ''
 }
 
-/** number or numeric string -> number; anything else -> null. */
 function num(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null
   if (typeof v === 'string' && v.trim() !== '') {
@@ -77,7 +64,6 @@ function num(v: unknown): number | null {
   return null
 }
 
-/** number | numeric string | date string ("2026-11-06") -> epoch value; else null. */
 function toMillis(v: unknown): number | null {
   const n = num(v)
   if (n !== null) return n
@@ -87,8 +73,6 @@ function toMillis(v: unknown): number | null {
   }
   return null
 }
-
-// --- Unwrap ---
 
 interface Unwrapped {
   data: unknown[] | null
@@ -106,8 +90,6 @@ function unwrap(input: unknown): Unwrapped {
     cellLevel: root.cellLevel
   }
 }
-
-// --- POI ---
 
 function parsePoi(
   raw: unknown,
@@ -144,7 +126,6 @@ function parsePoi(
       game.push({
         entity: str(g.entity).trim(),
         status: str(g.status).trim(),
-        // Real exports use `gameBrand`; `brand` is the legacy/invented name.
         brand: (str(g.gameBrand) || str(g.brand)).trim()
       })
     }
@@ -157,15 +138,12 @@ function parsePoi(
     title: str(raw.title),
     description: str(raw.description),
     address: str(raw.address),
-    // Real exports use `mainImage`; `imageUrl` is the legacy/invented name.
     imageUrl: str(raw.mainImage) || str(raw.imageUrl),
     communityContributed: raw.isCommunityContributed === true,
     game,
     cellToken
   }
 }
-
-// --- Parser ---
 
 export function parseWayfarer(input: unknown): ParseResult {
   const warnings: string[] = []
@@ -188,7 +166,6 @@ export function parseWayfarer(input: unknown): ParseResult {
       return
     }
     const meta = isRecord(raw.metadata) ? raw.metadata : {}
-    // Cells without metadata (empty cells) only have the top-level `cellId`.
     const token = (str(meta.s2CellId) || str(raw.cellId)).trim().toLowerCase()
     if (!token) {
       warnings.push(`Cell #${index}: no s2CellId/cellId, skipped.`)

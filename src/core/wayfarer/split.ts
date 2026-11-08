@@ -1,8 +1,4 @@
-/**
- * Split pasted text into one or more JSON documents (pure).
- * Handles: a single JSON value, several concatenated values (`{...}{...}` or separated by
- * newlines/commas), a leading UTF-8 BOM and the `)]}'` XSSI prefix. Never throws.
- */
+/** Splits pasted text into JSON documents: concatenated values, BOM and the `)]}'` XSSI prefix. Never throws. */
 
 export interface SplitResult {
   docs: unknown[]
@@ -46,11 +42,10 @@ export function splitJsonDocuments(input: string): SplitResult {
     .replace(/^\)\]\}'\s*/, '')
   if (!text) return { docs: [], errors: [] }
 
-  // Fast path: the whole text is one JSON value.
   try {
     return { docs: [JSON.parse(text)], errors: [] }
   } catch {
-    // fall through to the scanner
+    // not a single value: fall through to the scanner
   }
 
   const docs: unknown[] = []

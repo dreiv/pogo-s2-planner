@@ -1,7 +1,4 @@
-/**
- * Performance benchmarks — only run with BENCH=1.
- * Usage: $env:BENCH=1; npx vitest run src/core/__tests__/perf.bench.spec.ts
- */
+// Runs only with BENCH=1: BENCH=1 npx vitest run src/core/__tests__/perf.bench.spec.ts
 import { describe, it } from 'vitest'
 import { performance } from 'perf_hooks'
 import { classifyS17, poiKind } from '../classify'
@@ -34,19 +31,16 @@ describe.skipIf(!BENCH)('Performance benchmarks', () => {
     for (const n of sizes) {
       const { cells, pois } = makeSyntheticDataset(n)
 
-      // classifyS17
       const covered = new Set(cells.map((c) => c.token))
       const truncated = new Set(cells.filter((c) => c.truncated).map((c) => c.token))
       const cls = bench(() => classifyS17(pois, covered, truncated))
       if (cls.result.size === 0) throw new Error('classifyS17 returned empty')
 
-      // mergeImports (empty → dataset)
       const emptyInput: MergeInput = { cells: [], pois: [], importTimestamp: 0 }
       const incoming: MergeInput = { cells, pois, importTimestamp: Date.now() }
       const merge1 = bench(() => mergeImports(emptyInput, incoming))
       if (merge1.result.pois.length === 0) throw new Error('mergeImports returned empty')
 
-      // Second merge (same dataset on top of itself)
       const existing: MergeInput = {
         cells: merge1.result.cells,
         pois: merge1.result.pois,
@@ -55,7 +49,6 @@ describe.skipIf(!BENCH)('Performance benchmarks', () => {
       const merge2 = bench(() => mergeImports(existing, incoming))
       if (merge2.result.pois.length === 0) throw new Error('second mergeImports returned empty')
 
-      // poiKind over all POIs
       const kindBench = bench(() => {
         for (const poi of pois) poiKind(poi)
         return pois.length

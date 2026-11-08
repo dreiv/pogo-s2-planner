@@ -113,7 +113,6 @@ describe('poiOccupies', () => {
 })
 
 describe('classifyS17', () => {
-  // Two POIs in the same S17 cell
   it('two POIs in same cell → occupied', () => {
     const lat = 45.728
     const lng = 21.268
@@ -135,7 +134,7 @@ describe('classifyS17', () => {
     const s17 = cellTokenAt(lat, lng, 17)
     const s14 = cellTokenAt(lat, lng, 14)
 
-    const pois = [makePoi(lat, lng, [])] // no game objects
+    const pois = [makePoi(lat, lng, [])]
     const result = classifyS17(pois, new Set([s14]), new Set())
     // Cell has a POI but it's 'other', so the cell is free
     expect(result.get(s17)).toBe('free')
@@ -158,7 +157,6 @@ describe('classifyS17', () => {
     const s17 = cellTokenAt(lat, lng, 17)
 
     const pois = [makePoi(lat, lng, [activeStop()])]
-    // Empty covered set → unknown
     const result = classifyS17(pois, new Set(), new Set())
     expect(result.get(s17)).toBe('unknown')
   })
@@ -175,7 +173,6 @@ describe('classifyS17', () => {
   })
 
   it('POI on cell edge → still classified (deterministic)', () => {
-    // Use a point very close to a cell boundary
     const lat = 45.728
     const lng = 21.268
     const s17 = cellTokenAt(lat, lng, 17)
@@ -183,7 +180,6 @@ describe('classifyS17', () => {
 
     const pois = [makePoi(lat, lng, [activeStop()])]
     const result = classifyS17(pois, new Set([s14]), new Set())
-    // Should be in exactly one cell
     expect(result.get(s17)).toBe('occupied')
   })
 
@@ -194,7 +190,6 @@ describe('classifyS17', () => {
     const s17Children = allDescendantTokens(s14, 17)
     const someS17 = s17Children[0]!
 
-    // No POIs at all — just coverage
     const result = classifyS17([], new Set([s14]), new Set())
     // classifyS17 only returns entries for S17s that have POIs.
     // An S17 with no POIs is absent from the map → UI treats it as free.

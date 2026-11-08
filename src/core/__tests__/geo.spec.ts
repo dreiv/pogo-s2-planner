@@ -100,7 +100,7 @@ describe('cellsIntersectingCircle', () => {
     const radius = 100
     const result = cellsIntersectingCircle(center.lat, center.lng, radius, 17)
     for (const cell of result) {
-      expect(cell.distance).toBeLessThanOrEqual(radius + 1) // small tolerance
+      expect(cell.distance).toBeLessThanOrEqual(radius + 1)
     }
   })
 

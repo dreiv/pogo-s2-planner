@@ -1,10 +1,6 @@
 import L from 'leaflet'
 import { drawLocationMarker, removeLocationMarker, type LocationMarker } from './locationMarker'
 
-/**
- * Geolocation helper: shows user location on the map.
- * Returns cleanup function to remove markers.
- */
 export function locateMe(map: L.Map): () => void {
   let loc: LocationMarker | null = null
 

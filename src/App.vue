@@ -78,7 +78,7 @@ body {
   position: relative;
   width: 100vw;
   height: 100vh;
-  height: 100dvh; /* tracks the visible viewport, so mobile browser bars don't cover the buttons */
+  height: 100dvh;
 }
 
 .side-panel {
@@ -197,15 +197,11 @@ body {
   cursor: default;
 }
 
-/* --- Dark theme (follows system) ---
-   Surface colors come from theme.css tokens (which switch in dark mode).
-   Only Leaflet's own classes and the locate button need explicit overrides. */
 @media (prefers-color-scheme: dark) {
   .side-panel {
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.4);
   }
 
-  /* Leaflet controls */
   .leaflet-control-zoom a {
     background: var(--bg-panel);
     color: var(--text-primary);
@@ -234,7 +230,6 @@ body {
   }
 }
 
-/* --- Mobile: bottom-sheet + larger touch targets --- */
 @media (max-width: 640px) {
   .side-panel {
     top: auto;
@@ -258,7 +253,6 @@ body {
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    /* tab attached to the bottom edge: rounded only on the free (top) corners */
     border-radius: 12px 12px 0 0;
     width: 56px;
     height: calc(40px + env(safe-area-inset-bottom));

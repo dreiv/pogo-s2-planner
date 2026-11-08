@@ -1,6 +1,3 @@
-/**
- * Marks store — manual cell marks (status + note) persisted in IndexedDB.
- */
 import { defineStore } from 'pinia'
 import { db, type CellMark, type MarkStatus } from '../data/db'
 
@@ -18,7 +15,6 @@ export const useMarksStore = defineStore('marks', {
   }),
 
   getters: {
-    /** Map of token17 → mark for quick lookup. */
     markByToken(): Map<string, CellMark> {
       const m = new Map<string, CellMark>()
       for (const mark of this.marks) {
@@ -40,7 +36,6 @@ export const useMarksStore = defineStore('marks', {
       const now = Date.now()
       const mark: CellMark = { token17, status, note, updatedAt: now }
       await db.marks.put(mark)
-      // Update in-memory state
       const idx = this.marks.findIndex((m) => m.token17 === token17)
       if (idx >= 0) {
         this.marks[idx] = mark
@@ -62,7 +57,6 @@ export const useMarksStore = defineStore('marks', {
       this.revision++
     },
 
-    /** Bulk replace all marks (used by import). */
     async bulkSet(marks: CellMark[]): Promise<void> {
       await db.transaction('rw', db.marks, async () => {
         await db.marks.clear()

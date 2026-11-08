@@ -1,20 +1,11 @@
 /**
- * POI photo URL sanitizer (pure).
- *
- * Wayfarer exports `mainImage` as a Google user-content URL. We only show an image when
- * the URL looks like a permanent link:
- *  - https, host lh<N>.googleusercontent.com
- *  - a single path segment (the image id), no query string and no fragment
- *    (signed/expiring links carry `?Expires=...&Signature=...` / `token=` / `X-Goog-*`)
- *  - an id that is long enough to be a real id
- * Anything else returns null (=> no <img> at all).
- *
- * The returned URL gets a size suffix (`=s320`) so we never download full-size photos.
- * This is a heuristic: the UI must still hide the <img> on load error.
+ * Only permanent googleusercontent links are shown: https, host lh<N>.googleusercontent.com,
+ * a single path segment (the id), no query/fragment (signed links expire), id long enough.
+ * Anything else returns null. A size suffix (`=s320`) avoids full-size downloads.
+ * Heuristic: the UI must still hide the <img> on load error.
  */
 
 const HOST = /^lh\d+\.googleusercontent\.com$/i
-// id characters used by googleusercontent ids, optional existing size/option suffix.
 const PATH = /^\/([A-Za-z0-9_-]{20,})(=[A-Za-z0-9-]+)?$/
 
 export function stablePoiImageUrl(raw: string | null | undefined, sizePx = 320): string | null {

@@ -1,24 +1,18 @@
 /**
- * Merge successive Wayfarer imports (pure).
- *
- * Rules (D-012):
- *  - An incoming S14 cell is AUTHORITATIVE for the POIs of that cell: POIs of that cell
- *    that are missing from the incoming cell are removed (they disappeared in Wayfarer).
- *  - Exception: if the incoming cell is truncated (count >= 50) we cannot know what is
- *    missing, so POIs are only unioned by poiId (incoming wins on conflict).
- *  - An incoming cell is ignored only when BOTH cells have a known time and the incoming
- *    one is strictly older. Unknown time => the incoming import wins (last import wins).
- *  - Cells (coverage): union by token; empty cells ({count:0}) are kept: they mean "free".
- *  - POIs whose cellToken is not among the incoming cells are unioned by poiId.
- *  - Idempotent: merging the same import twice gives the same result.
- *  - Output is sorted (cells by token, POIs by id) so results are deterministic.
+ * Merge rules (D-012):
+ *  - An incoming S14 cell is authoritative for its POIs: POIs missing from it are removed,
+ *    unless it is truncated (count >= 50), where POIs are only unioned by poiId (incoming wins).
+ *  - An incoming cell is ignored only when both times are known and it is strictly older.
+ *  - Empty cells ({count:0}) are kept: they mean "free".
+ *  - POIs outside the incoming cells are unioned by poiId.
+ *  - Idempotent; output is sorted (cells by token, POIs by id).
  */
 import type { ParsedCell, ParsedPoi } from './parse'
 
 export interface MergeInput {
   cells: ParsedCell[]
   pois: ParsedPoi[]
-  /** Kept for compatibility. Only informational; it no longer decides conflicts. */
+  /** Informational only; does not decide conflicts. */
   importTimestamp: number
 }
 
@@ -29,7 +23,6 @@ export interface MergeStats {
   poisUnchanged: number
   cellsAdded: number
   cellsUpdated: number
-  /** Incoming cells ignored because the stored cell is strictly newer. */
   cellsSkippedOlder: number
 }
 
@@ -86,7 +79,6 @@ function groupByCell(pois: ParsedPoi[]): Map<string, ParsedPoi[]> {
   return m
 }
 
-/** Pure; does not mutate inputs. */
 export function mergeImports(existing: MergeInput, incoming: MergeInput): MergeResult {
   const stats = emptyMergeStats()
   const existingCells = new Map(existing.cells.map((c) => [c.token, c] as const))
@@ -96,7 +88,6 @@ export function mergeImports(existing: MergeInput, incoming: MergeInput): MergeR
   const existingByCell = groupByCell(existing.pois)
   const incomingByCell = groupByCell(incoming.pois)
 
-  // 1. Decide which incoming cells are accepted.
   const accepted: ParsedCell[] = []
   for (const inCell of incomingCells.values()) {
     const stored = existingCells.get(inCell.token)
@@ -107,13 +98,11 @@ export function mergeImports(existing: MergeInput, incoming: MergeInput): MergeR
     accepted.push(inCell)
   }
 
-  // 2. All POI ids that the accepted cells (or orphan POIs) bring.
   const keepIds = new Set<string>()
   for (const c of accepted) for (const p of incomingByCell.get(c.token) ?? []) keepIds.add(p.id)
   const orphans = incoming.pois.filter((p) => !incomingCells.has(p.cellToken))
   for (const p of orphans) keepIds.add(p.id)
 
-  // 3. Remove POIs that vanished from accepted, non-truncated cells.
   for (const c of accepted) {
     if (c.truncated) continue
     for (const p of existingByCell.get(c.token) ?? []) {
@@ -121,7 +110,6 @@ export function mergeImports(existing: MergeInput, incoming: MergeInput): MergeR
     }
   }
 
-  // 4. Upsert incoming POIs and cells.
   const upsert = (p: ParsedPoi): void => {
     const prev = pois.get(p.id)
     if (!prev) stats.poisAdded++
@@ -144,7 +132,6 @@ export function mergeImports(existing: MergeInput, incoming: MergeInput): MergeR
   }
 }
 
-/** Fold several imports into `existing`, in order. Stats are summed. */
 export function mergeMany(existing: MergeInput, incomings: MergeInput[]): MergeResult {
   let acc: MergeInput = existing
   const total = emptyMergeStats()

@@ -1,8 +1,3 @@
-/**
- * Backup / export-import — pure, tested.
- * Versioned JSON schema for marks + settings (optionally + dataset).
- */
-
 export const SCHEMA_VERSION = 1
 
 export type MarkStatus = 'planificat' | 'propus' | 'in-review' | 'respins' | 'aprobat'
@@ -41,7 +36,7 @@ export interface BackupFile {
   exportedAt: number
   marks: ExportedMark[]
   settings: ExportedSettings
-  /** Optional: included only when "export with dataset" is chosen. */
+  /** Only when "export with dataset" is chosen. */
   dataset?: ExportedDataset
 }
 
@@ -61,9 +56,6 @@ const VALID_STATUSES: Set<string> = new Set<MarkStatus>([
   'aprobat'
 ])
 
-/**
- * Validate and parse a backup JSON. Returns structured result or error.
- */
 export function parseBackup(raw: unknown): ImportResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return { ok: false, marks: [], settings: defaultSettings(), error: 'Not a JSON object' }
@@ -71,7 +63,6 @@ export function parseBackup(raw: unknown): ImportResult {
 
   const obj = raw as Record<string, unknown>
 
-  // Check schemaVersion
   if (typeof obj.schemaVersion !== 'number') {
     return { ok: false, marks: [], settings: defaultSettings(), error: 'Missing schemaVersion' }
   }
@@ -84,7 +75,6 @@ export function parseBackup(raw: unknown): ImportResult {
     }
   }
 
-  // Validate marks
   const marks: ExportedMark[] = []
   if (Array.isArray(obj.marks)) {
     for (const m of obj.marks) {
@@ -101,10 +91,8 @@ export function parseBackup(raw: unknown): ImportResult {
     }
   }
 
-  // Validate settings
   const settings = validateSettings(obj.settings)
 
-  // Optional dataset
   let dataset: ExportedDataset | undefined
   if (obj.dataset && typeof obj.dataset === 'object' && !Array.isArray(obj.dataset)) {
     const ds = obj.dataset as Record<string, unknown>
@@ -170,9 +158,6 @@ function validateSettings(raw: unknown): ExportedSettings {
   }
 }
 
-/**
- * Build a backup file object from marks and settings.
- */
 export function buildBackup(
   marks: ExportedMark[],
   settings: ExportedSettings,
