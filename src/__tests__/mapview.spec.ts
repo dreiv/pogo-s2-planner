@@ -18,26 +18,32 @@ vi.mock('../map/createMap', () => ({
 }))
 
 vi.mock('../map/PoiLayer', () => ({
-  PoiLayer: vi.fn(() => ({
-    setPois: () => layerCalls.push('poi:setPois'),
-    setOptions: () => layerCalls.push('poi:setOptions'),
-    destroy: () => layerCalls.push('poi:destroy')
-  }))
+  PoiLayer: vi.fn(function () {
+    return {
+      setPois: () => layerCalls.push('poi:setPois'),
+      setOptions: () => layerCalls.push('poi:setOptions'),
+      destroy: () => layerCalls.push('poi:destroy')
+    }
+  })
 }))
 
 vi.mock('../map/S2GridLayer', () => ({
-  S2GridLayer: vi.fn(() => ({
-    setCellStyle: vi.fn(),
-    destroy: () => layerCalls.push('grid:destroy')
-  }))
+  S2GridLayer: vi.fn(function () {
+    return {
+      setCellStyle: vi.fn(),
+      destroy: () => layerCalls.push('grid:destroy')
+    }
+  })
 }))
 
 vi.mock('../map/RangeLayer', () => ({
-  RangeLayer: vi.fn(() => ({
-    onCenterChanged: vi.fn(),
-    apply: () => layerCalls.push('range:apply'),
-    destroy: () => layerCalls.push('range:destroy')
-  }))
+  RangeLayer: vi.fn(function () {
+    return {
+      onCenterChanged: vi.fn(),
+      apply: () => layerCalls.push('range:apply'),
+      destroy: () => layerCalls.push('range:destroy')
+    }
+  })
 }))
 
 vi.mock('../map/cellPopup', () => ({ showCellPopup: vi.fn() }))

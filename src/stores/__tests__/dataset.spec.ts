@@ -183,7 +183,8 @@ describe('dataset store', () => {
     seed.dataset = await makeSeed()
     const store = useDatasetStore()
     const original = db.pois.toArray
-    db.pois.toArray = () => Promise.reject(new Error('IndexedDB blocked'))
+    db.pois.toArray = (() =>
+      Promise.reject(new Error('IndexedDB blocked'))) as unknown as typeof db.pois.toArray
     try {
       await store.load()
     } finally {
@@ -227,7 +228,8 @@ describe('dataset store', () => {
   it('reports an unreadable database in loadError and still finishes loading', async () => {
     const store = useDatasetStore()
     const spy = db.pois.toArray
-    db.pois.toArray = () => Promise.reject(new Error('IndexedDB blocked'))
+    db.pois.toArray = (() =>
+      Promise.reject(new Error('IndexedDB blocked'))) as unknown as typeof db.pois.toArray
     try {
       await store.load()
       expect(store.loaded).toBe(true)
