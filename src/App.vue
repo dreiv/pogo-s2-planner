@@ -2,12 +2,10 @@
 import { ref, onMounted } from 'vue'
 import MapView from './components/MapView.vue'
 import IntroGuide from './components/IntroGuide.vue'
-import S14Panel from './components/S14Panel.vue'
 import MarksPanel from './components/MarksPanel.vue'
 import RangePanel from './components/RangePanel.vue'
 import GridsPanel from './components/GridsPanel.vue'
 import PoiPanel from './components/PoiPanel.vue'
-import FieldPanel from './components/FieldPanel.vue'
 import LegendPanel from './components/LegendPanel.vue'
 import ImportPanel from './components/ImportPanel.vue'
 import BackupPanel from './components/BackupPanel.vue'
@@ -20,7 +18,6 @@ import { useMarksStore } from './stores/marks'
 const panelOpen = ref(false)
 const dataset = useDatasetStore()
 const marks = useMarksStore()
-const mapViewRef = ref<InstanceType<typeof MapView> | null>(null)
 const marksPanelRef = ref<InstanceType<typeof MarksPanel> | null>(null)
 
 onMounted(() => {
@@ -31,29 +28,19 @@ onMounted(() => {
 function onCellSelected(token: string): void {
   marksPanelRef.value?.selectCell(token)
 }
-
-function onZoomToS14(token: string): void {
-  mapViewRef.value?.zoomToS14(token)
-}
-
-function onHighlightS14(token: string | null): void {
-  mapViewRef.value?.highlightS14(token)
-}
 </script>
 
 <template>
   <div id="app-root">
-    <MapView ref="mapViewRef" @cell-selected="onCellSelected" />
+    <MapView @cell-selected="onCellSelected" />
     <aside class="side-panel" :class="{ open: panelOpen }" aria-label="Planner sidebar">
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <IntroGuide />
-        <S14Panel @zoom-to-s14="onZoomToS14" @highlight-s14="onHighlightS14" />
-        <MarksPanel ref="marksPanelRef" />
-        <RangePanel />
         <GridsPanel />
         <PoiPanel />
-        <FieldPanel @move-range="mapViewRef?.moveRangeToPosition()" />
+        <MarksPanel ref="marksPanelRef" />
+        <RangePanel />
         <LegendPanel />
         <ImportPanel />
         <BackupPanel />
@@ -61,8 +48,13 @@ function onHighlightS14(token: string | null): void {
         <DangerZone />
       </div>
     </aside>
-    <button class="panel-toggle" :class="{ open: panelOpen }" :aria-expanded="panelOpen" aria-label="Toggle sidebar"
-      @click="panelOpen = !panelOpen">
+    <button
+      class="panel-toggle"
+      :class="{ open: panelOpen }"
+      :aria-expanded="panelOpen"
+      aria-label="Toggle sidebar"
+      @click="panelOpen = !panelOpen"
+    >
       {{ panelOpen ? '✕' : '☰' }}
     </button>
     <PwaUpdate />
@@ -86,6 +78,7 @@ body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* tracks the visible viewport, so mobile browser bars don't cover the buttons */
 }
 
 .side-panel {
@@ -117,7 +110,7 @@ body {
   background: var(--bg-panel);
   color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
+  border-radius: 8px 0 0 8px;
   cursor: pointer;
   font-size: 18px;
   display: flex;
@@ -250,6 +243,7 @@ body {
     right: 0;
     width: 100%;
     height: 60vh;
+    height: 60dvh;
     transform: translateY(100%);
     border-radius: 16px 16px 0 0;
   }
@@ -261,21 +255,26 @@ body {
   .panel-toggle {
     top: auto;
     right: auto;
-    bottom: env(safe-area-inset-bottom);
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 8px;
-    width: 44px;
-    height: 44px;
+    /* tab attached to the bottom edge: rounded only on the free (top) corners */
+    border-radius: 12px 12px 0 0;
+    width: 56px;
+    height: calc(40px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .panel-toggle.open {
     right: auto;
-    bottom: calc(60vh + env(safe-area-inset-bottom));
+    bottom: 60vh;
+    bottom: 60dvh;
+    padding-bottom: 0;
+    height: 40px;
   }
 
   .panel-content {
-    padding: 16px 16px 24px;
+    padding: 12px 12px 24px;
   }
 
   .toggle-row {

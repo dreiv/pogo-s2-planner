@@ -1,23 +1,9 @@
-import { DEFAULT_THRESHOLDS } from './core/stats'
-
 export interface GlossaryEntry {
   label: string
   text: string
 }
 
-function gymTiers(): string {
-  const { poiCounts, gymCounts } = DEFAULT_THRESHOLDS
-  return poiCounts
-    .map((n, i) => {
-      const gyms = gymCounts[i] ?? 0
-      return `${n} POIs → ${gyms} ${gyms === 1 ? 'gym' : 'gyms'}`
-    })
-    .join(', ')
-}
-
-const tiers = gymTiers()
-
-export const GYM_TIERS_TEXT = tiers
+const tiers = '2 POIs → 1 gym, 6 POIs → 2 gyms, 20 POIs → 3 gyms'
 
 export const TERMS = {
   s2: {
@@ -48,33 +34,13 @@ export const TERMS = {
     label: 'Wayfarer',
     text: 'The tool used to nominate new Pokéstops. This app reads a JSON export of Wayfarer search results that you import yourself.'
   },
-  statsMode: {
-    label: 'Color S14 cells by stats',
-    text: 'Colors each S14 cell on the map by how close it is to the next gym tier: green = top tier reached, amber = 1 POI short, red = 2 or more POIs short.'
-  },
-  totalPoi: {
-    label: 'POIs',
-    text: 'Every POI in the S14 cell: stops, gyms and all other places. This total is what the gym estimate uses.'
-  },
-  gymsExpected: {
-    label: 'Gyms expected',
-    text: `The gym count this S14 cell should have, from its POI total (${tiers}). An estimate, not a guarantee.`
-  },
-  toNextGym: {
-    label: 'To next gym',
-    text: 'How many more POIs this S14 cell needs to reach the next gym tier. 0 means it is already at the top tier.'
-  },
-  freeCells: {
-    label: 'Free S17 cells',
-    text: 'S17 cells in this S14 cell with no active stop or gym. Cells you marked Proposed or In review are not counted. Cells with incomplete data show 0, because the real number is unknown.'
-  },
   incompleteData: {
     label: 'Incomplete data',
     text: "Wayfarer limits how many POIs it returns per S14 cell. When a cell reaches 50 or more, some POIs may be missing, so its free cells can't be trusted."
   },
   marks: {
     label: 'Mark status',
-    text: 'Planned: you intend to nominate here. Proposed: you submitted a nomination. In review: Wayfarer is reviewing it. Rejected and Approved are the outcomes. Proposed and In review cells are not counted as free in the S14 table.'
+    text: 'Planned: you intend to nominate here. Proposed: you submitted a nomination. In review: Wayfarer is reviewing it. Rejected and Approved are the outcomes.'
   },
   rangeTool: {
     label: 'Range tool',
@@ -83,10 +49,6 @@ export const TERMS = {
   rangeRings: {
     label: '80 m rings',
     text: 'Draws an 80 m circle around every stop and gym.'
-  },
-  location: {
-    label: 'Show my location',
-    text: 'Follows your GPS position on the map. Your browser asks for permission first.'
   },
   importMerge: {
     label: 'How imports merge',

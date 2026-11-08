@@ -2,7 +2,10 @@ import { defineStore } from 'pinia'
 
 const STORAGE_KEY = 'pogo-s2-planner:ui'
 
+const STATE_VERSION = 2
+
 interface UiState {
+  version: number
   openSections: Record<string, boolean>
   introDismissed: boolean
 }
@@ -29,7 +32,8 @@ export const useUiStore = defineStore('ui', {
   state: (): UiState => {
     const saved = load()
     return {
-      openSections: saved.openSections ?? {},
+      version: STATE_VERSION,
+      openSections: saved.version === STATE_VERSION ? (saved.openSections ?? {}) : {},
       introDismissed: saved.introDismissed ?? false
     }
   },

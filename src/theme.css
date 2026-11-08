@@ -2,7 +2,7 @@
  * Centralized surface color tokens (CSS custom properties).
  *
  * These cover the "chrome" of the UI: backgrounds, text and borders.
- * Data-driven colors (POI kinds, cell states, marks, stats) live in
+ * Data-driven colors (POI kinds, cell states, marks) live in
  * theme.ts. Each token is defined once and consumed via var(--token).
  *
  * Light values are the defaults; dark values are overridden under
@@ -185,5 +185,25 @@
 
   .leaflet-popup-tip {
     background: var(--bg-panel);
+  }
+}
+
+/* Phones: smaller popup cards */
+@media (max-width: 640px) {
+  .poi-popup {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .poi-popup-title {
+    font-size: 13px;
+  }
+
+  .poi-photo {
+    max-height: 110px;
+  }
+
+  .leaflet-popup-content {
+    margin: 10px 12px;
   }
 }

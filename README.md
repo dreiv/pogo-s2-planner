@@ -33,8 +33,7 @@ npm run build    # build de producție în dist/
 
 - Aplicația se instalează (manifest + service worker). Funcționează în teren cu
   datele deja importate.
-- **Mod „în teren"**: urmărire continuă a locației (GPS), opțiune de a muta
-  centrul range-ului după poziție, fără a bloca panoul manual.
+- Butonul de locație de pe hartă arată poziția ta curentă.
 - Service worker-ul face cache **doar** la shell-ul aplicației (JS/CSS/HTML).
   Nu face cache la tile-urile OSM (politica OSM).
 - **Actualizare**: când e disponibilă o versiune nouă, apare un dialog cu

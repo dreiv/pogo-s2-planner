@@ -2,7 +2,7 @@
  * Centralized color tokens for data-driven (map) elements.
  *
  * Single source of truth for the "meaningful" colors: POI kinds, S17 cell
- * states, manual mark statuses, S14 stats fill, the user location marker,
+ * states, manual mark statuses, the user location marker,
  * grid strokes and the range tool. Map layers (src/map/**) and the UI
  * (legend swatches, inline styles) both read from here, so each color is
  * defined exactly once.
@@ -36,13 +36,6 @@ export const MARK_STATUS_COLORS = {
   aprobat: '#0f766e'
 } as const
 
-/** S14 stats fill colors, by distance to the next gym threshold. */
-export const S14_STATS_COLORS = {
-  atThreshold: '#22c55e',
-  nearThreshold: '#f59e0b',
-  farThreshold: '#ef4444'
-} as const
-
 /** User location marker + accuracy circle. */
 export const LOCATION_COLORS = {
   marker: '#2196f3',
@@ -52,7 +45,7 @@ export const LOCATION_COLORS = {
 /** Grid stroke colors. */
 export const GRID_STROKE = {
   s14: '#3b82f6',
-  s17: '#6b7280'
+  s17: '#9ca3af'
 } as const
 
 /** Range tool colors (circle + cell outlines). */

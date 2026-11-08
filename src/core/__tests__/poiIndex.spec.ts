@@ -1,10 +1,9 @@
 /**
- * Equivalence tests: classifyS17 / computeS14Stats with and without a pre-computed PoiIndex.
+ * Equivalence tests: classifyS17 with and without a pre-computed PoiIndex.
  * These run ALWAYS (not gated by BENCH).
  */
 import { describe, it, expect } from 'vitest'
 import { classifyS17, DEFAULT_CLASSIFY_OPTS } from '../classify'
-import { computeS14Stats, DEFAULT_STATS_OPTS } from '../stats'
 import { buildPoiIndex } from '../poiIndex'
 import { makeSyntheticDataset } from './helpers/synthetic'
 import { cellTokenAt, parentToken } from '../s2'
@@ -23,17 +22,6 @@ describe('PoiIndex equivalence', () => {
     const noIndex = classifyS17(pois, covered, truncated, opts)
     const index = buildPoiIndex(pois)
     const withIndex = classifyS17(pois, covered, truncated, opts, index)
-
-    expect(mapToArray(withIndex)).toEqual(mapToArray(noIndex))
-  })
-
-  it('computeS14Stats with index ≡ without index (synthetic 1000)', () => {
-    const { cells, pois } = makeSyntheticDataset(1000)
-    const opts = { ...DEFAULT_STATS_OPTS }
-
-    const noIndex = computeS14Stats(pois, cells, opts)
-    const index = buildPoiIndex(pois)
-    const withIndex = computeS14Stats(pois, cells, opts, index)
 
     expect(mapToArray(withIndex)).toEqual(mapToArray(noIndex))
   })

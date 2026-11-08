@@ -2,28 +2,20 @@
 import { onMounted, onBeforeUnmount, ref, provide, watch } from 'vue'
 import { createMap } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
-import { startFieldMode } from '../map/fieldMode'
 import { MAP_CONTEXT_KEY, type MapContext } from '../map/MapContext'
 import { S2GridLayer, type CellStyleFn } from '../map/S2GridLayer'
 import { PoiLayer } from '../map/PoiLayer'
 import { RangeLayer } from '../map/RangeLayer'
-import { S14Highlight } from '../map/S14Highlight'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { useMarksStore } from '../stores/marks'
-import { classifyS17, DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
-import { parentToken, cellCenter } from '../core/s2'
+import { DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
+import { classifyS17Token } from '../core/cellState'
+import { parentToken } from '../core/s2'
 import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
 import { showCellPopup } from '../map/cellPopup'
-import { showS14StatsPopup } from '../map/s14Popup'
-import { computeS14Stats, DEFAULT_THRESHOLDS, type S14Stats } from '../core/stats'
 import { MARK_OUTLINE_WEIGHT, MARK_STATUS_DASH } from '../markStyle'
-import {
-  CELL_STATE_COLORS,
-  MARK_STATUS_COLORS,
-  S14_STATS_COLORS,
-  GRID_STROKE
-} from '../theme'
+import { CELL_STATE_COLORS, MARK_STATUS_COLORS, GRID_STROKE } from '../theme'
 import { GRID_MAX_CELLS } from '../config'
 
 type LeafletMap = ReturnType<typeof createMap>
@@ -34,17 +26,18 @@ const marks = useMarksStore()
 const containerRef = ref<HTMLElement | null>(null)
 let map: LeafletMap | null = null
 let cleanupLocate: (() => void) | null = null
-let cleanupField: (() => void) | null = null
-let lastFieldPosition: [number, number] | null = null
 let s14Layer: S2GridLayer | null = null
 let s17Layer: S2GridLayer | null = null
 let poiLayer: PoiLayer | null = null
 let rangeLayer: RangeLayer | null = null
 let flushMoveEndRef: (() => void) | null = null
 
-// --- Cell classification (memoized) ---
+// --- Cell classification (memoized per dataset revision) ---
+// State is derived per visible S17 token, so empty S17 cells inside a covered
+// S14 cell are "free" too (not only cells that already contain a POI).
 let cachedClassifyKey = ''
-let cachedCellStates: Map<string, CellState> = new Map()
+let stateCache = new Map<string, CellState>()
+let s14Coverage = new Map<string, boolean>() // S14 token -> truncated
 let cachedPoiIndex: PoiIndex | null = null
 
 function getPoiIndex(): PoiIndex {
@@ -54,96 +47,50 @@ function getPoiIndex(): PoiIndex {
   return cachedPoiIndex
 }
 
-function getCellStates(): Map<string, CellState> {
+function ensureClassifyCache(): void {
   const key = `${dataset.revision}`
-  if (key === cachedClassifyKey) return cachedCellStates
-
-  const coveredS14 = new Set<string>()
-  const truncatedS14 = new Set<string>()
-  for (const cell of dataset.cells) {
-    coveredS14.add(cell.token)
-    if (cell.truncated) truncatedS14.add(cell.token)
-  }
-
-  const index = getPoiIndex()
-  cachedCellStates = classifyS17(
-    dataset.pois,
-    coveredS14,
-    truncatedS14,
-    DEFAULT_CLASSIFY_OPTS,
-    index
-  )
-
+  if (key === cachedClassifyKey) return
+  s14Coverage = new Map(dataset.cells.map((c) => [c.token, c.truncated]))
+  stateCache = new Map()
   cachedClassifyKey = key
-  return cachedCellStates
 }
 
-// --- S14 stats (memoized) ---
-let cachedStatsKey = ''
-let cachedS14Stats: Map<string, S14Stats> = new Map()
-
-function getS14Stats(): Map<string, S14Stats> {
-  const key = `${dataset.revision}:${marks.revision}`
-  if (key === cachedStatsKey) return cachedS14Stats
-  cachedS14Stats = computeS14Stats(
-    dataset.pois,
-    dataset.cells,
-    {
-      thresholds: DEFAULT_THRESHOLDS,
-      classifyOpts: DEFAULT_CLASSIFY_OPTS,
-      pendingTokens: marks.pendingTokens
-    },
-    getPoiIndex()
+function cellStateOf(token: string): CellState {
+  ensureClassifyCache()
+  const hit = stateCache.get(token)
+  if (hit) return hit
+  const truncated = s14Coverage.get(parentToken(token, 14))
+  const state = classifyS17Token(
+    getPoiIndex().poisByS17.get(token) ?? [],
+    { covered: truncated !== undefined, truncated: truncated ?? false },
+    DEFAULT_CLASSIFY_OPTS
   )
-  cachedStatsKey = key
-  return cachedS14Stats
-}
-
-/** Color S14 by distance to next threshold: 0=green, 1=yellow, 2+=red. */
-function makeS14StatsStyle(): CellStyleFn {
-  const stats = getS14Stats()
-  return (token: string) => {
-    const s = stats.get(token)
-    if (!s) return null
-    const dist = s.poiToNextThreshold
-    if (dist === 0) return { fillColor: S14_STATS_COLORS.atThreshold, fillOpacity: 0.2 }
-    if (dist === 1) return { fillColor: S14_STATS_COLORS.nearThreshold, fillOpacity: 0.25 }
-    return { fillColor: S14_STATS_COLORS.farThreshold, fillOpacity: 0.2 }
-  }
-}
-
-function handleS14CellClick(token: string, lat: number, lng: number): void {
-  if (!map) return
-  const stats = getS14Stats()
-  const s = stats.get(token)
-  if (!s) return
-  showS14StatsPopup(map, [lat, lng], s)
+  stateCache.set(token, state)
+  return state
 }
 
 const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
   occupied: { fill: CELL_STATE_COLORS.occupied, opacity: 0.25 },
-  free: { fill: CELL_STATE_COLORS.free, opacity: 0.15 },
+  free: { fill: CELL_STATE_COLORS.free, opacity: 0 }, // no fill: too noisy
   'free-uncertain': { fill: CELL_STATE_COLORS['free-uncertain'], opacity: 0.2 },
   unknown: { fill: CELL_STATE_COLORS.unknown, opacity: 0 }
 }
 
 function makeS17CellStyle(): CellStyleFn {
-  const states = getCellStates()
   const markMap = marks.markByToken
   return (token: string) => {
-    const state = states.get(token)
-    const c = state ? CELL_COLORS[state] : undefined
+    const c = CELL_COLORS[cellStateOf(token)]
     const mark = markMap.get(token)
     if (mark) {
       return {
-        fillColor: c?.fill ?? MARK_STATUS_COLORS[mark.status],
-        fillOpacity: c?.opacity ?? 0,
+        fillColor: c.opacity > 0 ? c.fill : MARK_STATUS_COLORS[mark.status],
+        fillOpacity: c.opacity,
         color: MARK_STATUS_COLORS[mark.status],
         weight: MARK_OUTLINE_WEIGHT,
         dashArray: MARK_STATUS_DASH[mark.status]
       }
     }
-    if (!c || c.opacity === 0) return null
+    if (c.opacity === 0) return null
     return { fillColor: c.fill, fillOpacity: c.opacity }
   }
 }
@@ -154,8 +101,7 @@ const emit = defineEmits<{
 
 function handleS17CellClick(token: string, lat: number, lng: number): void {
   if (!map) return
-  const states = getCellStates()
-  const state = states.get(token) ?? 'unknown'
+  const state = cellStateOf(token)
   const s14 = parentToken(token, 14)
   const cellPois = getPoiIndex().poisByS17.get(token) ?? []
 
@@ -180,8 +126,6 @@ function syncGridLayers(): void {
       maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s14,
       weight: 2,
-      cellStyle: settings.showS14Stats ? makeS14StatsStyle() : undefined,
-      onCellClick: handleS14CellClick,
       onUpdated: () => poiLayer?.bringToFront()
     })
   } else if (!settings.showS14 && s14Layer) {
@@ -197,6 +141,7 @@ function syncGridLayers(): void {
       maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s17,
       weight: 1,
+      dashArray: '3 5',
       cellStyle: makeS17CellStyle(),
       onCellClick: handleS17CellClick,
       onUpdated: () => poiLayer?.bringToFront()
@@ -309,9 +254,8 @@ onMounted(() => {
 
 // React to grid toggle changes
 watch(
-  () => [settings.showS14, settings.showS17, settings.s14MinZoom, settings.s17MinZoom, settings.showS14Stats] as const,
+  () => [settings.showS14, settings.showS17, settings.s14MinZoom, settings.s17MinZoom] as const,
   () => {
-    // Rebuild S14 layer when stats mode changes
     if (s14Layer) {
       s14Layer.destroy()
       s14Layer = null
@@ -337,15 +281,11 @@ watch(
   () => dataset.revision,
   () => {
     cachedClassifyKey = '' // invalidate memo
-    cachedStatsKey = '' // invalidate stats memo
     cachedPoiIndex = null // invalidate POI index
     syncPoiLayer()
     // Update grid styles in-place (no destroy/recreate)
     if (s17Layer) {
       s17Layer.setCellStyle(makeS17CellStyle())
-    }
-    if (s14Layer && settings.showS14Stats) {
-      s14Layer.setCellStyle(makeS14StatsStyle())
     }
     // Ensure POI markers are on top
     poiLayer?.bringToFront()
@@ -356,42 +296,9 @@ watch(
 watch(
   () => marks.revision,
   () => {
-    cachedStatsKey = '' // invalidate stats memo
     // Update S17 styles in-place (marks change colors)
     if (s17Layer) {
       s17Layer.setCellStyle(makeS17CellStyle())
-    }
-    if (s14Layer && settings.showS14Stats) {
-      s14Layer.setCellStyle(makeS14StatsStyle())
-    }
-  }
-)
-
-// React to field mode toggle
-watch(
-  () => settings.fieldMode,
-  (on) => {
-    const m = map
-    if (!m) return
-    if (on) {
-      if (cleanupField) cleanupField()
-      cleanupField = startFieldMode(m, {
-        onPosition: (lat, lng) => {
-          lastFieldPosition = [lat, lng]
-          if (settings.followPosition) {
-            m.panTo([lat, lng])
-          }
-        },
-        onStopped: (reason) => {
-          settings.setFieldMode(false)
-          console.warn('Field mode stopped:', reason)
-        }
-      })
-    } else {
-      if (cleanupField) {
-        cleanupField()
-        cleanupField = null
-      }
     }
   }
 )
@@ -400,12 +307,10 @@ onBeforeUnmount(() => {
   // Flush pending center/zoom writes before tearing down
   if (flushMoveEndRef) flushMoveEndRef()
   if (cleanupLocate) cleanupLocate()
-  if (cleanupField) cleanupField()
   if (s14Layer) { s14Layer.destroy(); s14Layer = null }
   if (s17Layer) { s17Layer.destroy(); s17Layer = null }
   if (poiLayer) { poiLayer.destroy(); poiLayer = null }
   if (rangeLayer) { rangeLayer.destroy(); rangeLayer = null }
-  if (s14Highlight) { s14Highlight.clear(); s14Highlight = null }
   if (map) {
     map.remove()
     map = null
@@ -417,29 +322,6 @@ const handleLocate = (): void => {
   if (cleanupLocate) cleanupLocate()
   cleanupLocate = locateMe(map)
 }
-
-/** Zoom the map to a specific S14 cell. */
-function zoomToS14(token: string): void {
-  if (!map) return
-  const center = cellCenter(token)
-  map.setView([center[0], center[1]], Math.max(map.getZoom(), 15))
-}
-
-let s14Highlight: S14Highlight | null = null
-
-function highlightS14(token: string | null): void {
-  if (!map) return
-  s14Highlight ??= new S14Highlight(map)
-  s14Highlight.show(token)
-}
-
-/** Move the range center to the last known field position. */
-function moveRangeToPosition(): void {
-  if (!lastFieldPosition) return
-  settings.setRangeCenter(lastFieldPosition)
-}
-
-defineExpose({ zoomToS14, highlightS14, moveRangeToPosition })
 </script>
 
 <template>
@@ -472,7 +354,7 @@ defineExpose({ zoomToS14, highlightS14, moveRangeToPosition })
 
 .locate-btn {
   position: absolute;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
   right: 16px;
   z-index: 1000;
   width: 44px;

@@ -5,7 +5,6 @@
 import { describe, it } from 'vitest'
 import { performance } from 'perf_hooks'
 import { classifyS17, poiKind } from '../classify'
-import { computeS14Stats } from '../stats'
 import { mergeImports, type MergeInput } from '../wayfarer/merge'
 import { makeSyntheticDataset } from './helpers/synthetic'
 
@@ -41,10 +40,6 @@ describe.skipIf(!BENCH)('Performance benchmarks', () => {
       const cls = bench(() => classifyS17(pois, covered, truncated))
       if (cls.result.size === 0) throw new Error('classifyS17 returned empty')
 
-      // computeS14Stats
-      const stats = bench(() => computeS14Stats(pois, cells))
-      if (stats.result.size === 0) throw new Error('computeS14Stats returned empty')
-
       // mergeImports (empty → dataset)
       const emptyInput: MergeInput = { cells: [], pois: [], importTimestamp: 0 }
       const incoming: MergeInput = { cells, pois, importTimestamp: Date.now() }
@@ -70,7 +65,6 @@ describe.skipIf(!BENCH)('Performance benchmarks', () => {
       rows.push({
         N: n,
         'classifyS17 (ms)': cls.ms.toFixed(1),
-        'computeS14Stats (ms)': stats.ms.toFixed(1),
         'mergeImports empty→full (ms)': merge1.ms.toFixed(1),
         'mergeImports full→full (ms)': merge2.ms.toFixed(1),
         'poiKind all (ms)': kindBench.ms.toFixed(1)

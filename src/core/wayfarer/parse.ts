@@ -220,6 +220,13 @@ export function parseWayfarer(input: unknown): ParseResult {
     }
   })
 
+  const offLevel = [...cells.values()].filter((c) => c.level !== null && c.level !== 14).length
+  if (offLevel > 0) {
+    warnings.push(
+      `${offLevel} cell(s) are not S14 (this planner expects S14 exports); their area will show no colors.`
+    )
+  }
+
   if (duplicatePois > 0) {
     warnings.push(`${duplicatePois} duplicate poiId(s) in the same import; last one kept.`)
   }

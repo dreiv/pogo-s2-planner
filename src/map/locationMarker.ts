@@ -1,7 +1,6 @@
 /**
  * Shared user-location marker + accuracy circle.
- * Used by both locateMe (one-shot) and fieldMode (continuous tracking) so the
- * marker styling is defined in one place.
+ * Used by locateMe so the marker styling is defined in one place.
  */
 import L from 'leaflet'
 import { LOCATION_COLORS } from '../theme'

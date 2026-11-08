@@ -101,7 +101,7 @@ defineExpose({ selectCell })
 </script>
 
 <template>
-  <CollapsibleSection id="marks" title="Manual marks" default-open>
+  <CollapsibleSection id="marks" title="Manual marks">
     <p v-if="!selectedToken" class="hint">
       Click a cell on the map to select it, then set its status here. Turn on the S17 grid to see
       the cells.
@@ -329,6 +329,13 @@ defineExpose({ selectCell })
   .status-opt,
   .note-input {
     min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .selected-card {
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }
 </style>

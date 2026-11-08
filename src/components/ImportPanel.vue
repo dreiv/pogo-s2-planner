@@ -76,7 +76,7 @@ function formatTime(ts: number): string {
 </script>
 
 <template>
-  <CollapsibleSection id="import" title="Wayfarer import" default-open>
+  <CollapsibleSection id="import" title="Wayfarer import">
     <p class="hint">
       Load your Wayfarer data first. Nothing else on this panel works without it.
       <InfoTip term="importMerge" />
@@ -189,15 +189,19 @@ function formatTime(ts: number): string {
 }
 
 .file-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
+  overflow: hidden;
   cursor: pointer;
 }
 
 .file-btn input {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   opacity: 0;

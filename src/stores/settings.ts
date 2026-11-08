@@ -17,9 +17,6 @@ export interface SettingsState {
   rangeRadius: number
   rangeCenter: [number, number] | null
   showRangeRings: boolean
-  showS14Stats: boolean
-  fieldMode: boolean
-  followPosition: boolean
   showPoiImages: boolean
 }
 
@@ -49,7 +46,7 @@ export const useSettingsStore = defineStore('settings', {
       zoom: saved.zoom ?? DEFAULT_ZOOM,
       showS14: saved.showS14 ?? false,
       showS17: saved.showS17 ?? false,
-      s14MinZoom: saved.s14MinZoom ?? 12,
+      s14MinZoom: saved.s14MinZoom ?? 13,
       s17MinZoom: saved.s17MinZoom ?? 16,
       showPois: saved.showPois ?? true,
       showOtherPois: saved.showOtherPois ?? true,
@@ -58,9 +55,6 @@ export const useSettingsStore = defineStore('settings', {
       rangeRadius: saved.rangeRadius ?? 80,
       rangeCenter: saved.rangeCenter ?? null,
       showRangeRings: saved.showRangeRings ?? false,
-      showS14Stats: saved.showS14Stats ?? false,
-      fieldMode: saved.fieldMode ?? false,
-      followPosition: saved.followPosition ?? false,
       showPoiImages: saved.showPoiImages ?? true
     }
   },
@@ -115,19 +109,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleShowRangeRings(): void {
       this.showRangeRings = !this.showRangeRings
-      persist(this.$state)
-    },
-    toggleShowS14Stats(): void {
-      this.showS14Stats = !this.showS14Stats
-      persist(this.$state)
-    },
-    setFieldMode(on: boolean): void {
-      this.fieldMode = on
-      // fieldMode is a runtime state; don't persist it (geolocation may be
-      // unavailable on next load). followPosition is persisted.
-    },
-    toggleFollowPosition(): void {
-      this.followPosition = !this.followPosition
       persist(this.$state)
     },
     toggleShowPoiImages(): void {

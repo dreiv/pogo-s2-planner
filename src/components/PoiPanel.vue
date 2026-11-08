@@ -7,7 +7,7 @@ const settings = useSettingsStore()
 </script>
 
 <template>
-  <CollapsibleSection id="poi" title="Points of interest (POI)" default-open>
+  <CollapsibleSection id="poi" title="Points of interest (POI)">
     <ToggleRow
       :checked="settings.showPois"
       label="Show POI"

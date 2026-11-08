@@ -9,7 +9,7 @@ const ui = useUiStore()
 <template>
   <div class="intro">
     <p class="tagline">
-      Find S14 cells where one more stop unlocks a gym, then pick a free S17 cell to nominate in.
+      Pick a free S17 cell on the map and track the ones you plan to nominate.
     </p>
     <div v-if="!ui.introDismissed" class="guide">
       <h3 class="guide-title">How it works</h3>
@@ -21,8 +21,7 @@ const ui = useUiStore()
           (a JSON export).
         </li>
         <li>
-          Pick a cell in the <strong>S14 statistics</strong> table, or click a free cell on the map
-          (turn on the S17 grid).
+          Turn on the S17 grid under <strong>S2 grids</strong>, then click a free cell on the map.
         </li>
         <li>Track it under <strong>Manual marks</strong>.</li>
       </ol>
@@ -65,5 +64,12 @@ const ui = useUiStore()
 
 .guide-steps li {
   margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .guide {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
 }
 </style>

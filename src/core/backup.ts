@@ -28,7 +28,6 @@ export interface ExportedSettings {
   rangeRadius: number
   rangeCenter: [number, number] | null
   showRangeRings: boolean
-  showS14Stats: boolean
   showPoiImages: boolean
 }
 
@@ -132,7 +131,6 @@ function defaultSettings(): ExportedSettings {
     rangeRadius: 80,
     rangeCenter: null,
     showRangeRings: false,
-    showS14Stats: false,
     showPoiImages: true
   }
 }
@@ -168,7 +166,6 @@ function validateSettings(raw: unknown): ExportedSettings {
         ? [s.rangeCenter[0] as number, s.rangeCenter[1] as number]
         : null,
     showRangeRings: typeof s.showRangeRings === 'boolean' ? s.showRangeRings : def.showRangeRings,
-    showS14Stats: typeof s.showS14Stats === 'boolean' ? s.showS14Stats : def.showS14Stats,
     showPoiImages: typeof s.showPoiImages === 'boolean' ? s.showPoiImages : def.showPoiImages
   }
 }

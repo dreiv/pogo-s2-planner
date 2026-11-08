@@ -25,16 +25,6 @@ export const useMarksStore = defineStore('marks', {
         m.set(mark.token17, mark)
       }
       return m
-    },
-    /** Tokens marked as 'propus' or 'in-review' — not shown as free in stats. */
-    pendingTokens(): Set<string> {
-      const s = new Set<string>()
-      for (const mark of this.marks) {
-        if (mark.status === 'propus' || mark.status === 'in-review') {
-          s.add(mark.token17)
-        }
-      }
-      return s
     }
   },
 

@@ -10,7 +10,7 @@ Pokéstop/Gym. Are și un instrument de range (80–500 m).
 
 - Cod și comentarii în engleză; UI în engleză.
 - `src/core/**` = TypeScript pur, zero import din vue/leaflet/dexie. Toată logica
-  (S2, geo, parser, clasificare, statistici) stă aici și are teste Vitest.
+  (S2, geo, parser, clasificare) stă aici și are teste Vitest.
 - Leaflet doar în `src/map/**`. Dexie doar în `src/data/**`. Pinia în `src/stores/**`.
 - Fără backend, fără API keys, fără cereri de rețea în afară de tile-urile OSM
   (și imaginile POI, încărcate doar la deschiderea popup-ului).

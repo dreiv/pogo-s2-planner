@@ -66,6 +66,8 @@ export interface S2GridLayerOptions {
   color: string
   /** Stroke width in px. */
   weight: number
+  /** Optional default dash pattern for the grid lines. */
+  dashArray?: string
   /** Optional per-cell style function. If null/absent, no fill. */
   cellStyle?: CellStyleFn
   /** Optional click handler for cell popups. */
@@ -147,15 +149,16 @@ export class S2GridLayer {
 
     const { tokens, truncated } = cellsCoveringBounds(b, this.opts.level, this.opts.maxCells)
 
-    // Show "Grid partial" hint when the cell count is capped
-    if (this.hintEl) {
-      if (truncated) {
-        this.hintEl.textContent = 'Grid partial – zoom in'
+    // Too many cells for this view: draw nothing rather than a misleading partial grid.
+    if (truncated) {
+      this.clearPolygons()
+      if (this.hintEl) {
+        this.hintEl.textContent = 'Zoom in to see the grid'
         this.hintEl.style.display = 'block'
-      } else {
-        this.hintEl.style.display = 'none'
       }
+      return
     }
+    if (this.hintEl) this.hintEl.style.display = 'none'
 
     this.clearPolygons()
 
@@ -174,7 +177,7 @@ export class S2GridLayer {
       const polyOpts: L.PathOptions = {
         color: style?.color ?? this.opts.color,
         weight: style?.weight ?? this.opts.weight,
-        dashArray: style?.dashArray,
+        dashArray: style?.dashArray ?? this.opts.dashArray,
         fill: style !== null,
         fillColor: style?.fillColor ?? this.opts.color,
         fillOpacity: style?.fillOpacity ?? 0,
@@ -192,9 +195,6 @@ export class S2GridLayer {
 
       poly.addTo(this.layerGroup)
     }
-
-    // If truncated, we could show a subtle indicator, but for now just cap
-    void truncated
 
     // Notify that polygons were redrawn (e.g. to bring POI markers to front)
     this.opts.onUpdated?.()
@@ -229,7 +229,7 @@ export class S2GridLayer {
           const polyOpts: L.PathOptions = {
             color: style?.color ?? this.opts.color,
             weight: style?.weight ?? this.opts.weight,
-            dashArray: style?.dashArray,
+            dashArray: style?.dashArray ?? this.opts.dashArray,
             fill: style !== null,
             fillColor: style?.fillColor ?? this.opts.color,
             fillOpacity: style?.fillOpacity ?? 0

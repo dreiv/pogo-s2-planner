@@ -37,6 +37,7 @@ vi.mock('leaflet', () => {
       map: vi.fn(() => mockMap),
       tileLayer: vi.fn(() => mockTileLayer),
       layerGroup: vi.fn(() => mockLayerGroup),
+      canvas: vi.fn(() => ({ remove: vi.fn() })),
       circleMarker: vi.fn(() => mockCircleMarker),
       polygon: vi.fn(() => ({ addTo: vi.fn(), on: vi.fn() })),
       popup: vi.fn(() => ({
@@ -53,7 +54,9 @@ vi.mock('../map/createMap', () => ({
     on: vi.fn(),
     remove: vi.fn(),
     getCenter: vi.fn(() => ({ lat: 44.4, lng: 26.1 })),
-    getZoom: vi.fn(() => 13)
+    getZoom: vi.fn(() => 13),
+    getPane: vi.fn(() => ({ style: {} })),
+    createPane: vi.fn(() => ({ style: {} }))
   }))
 }))
 

@@ -7,7 +7,7 @@ const settings = useSettingsStore()
 </script>
 
 <template>
-  <CollapsibleSection id="grids" title="S2 grids" default-open>
+  <CollapsibleSection id="grids" title="S2 grids">
     <ToggleRow
       :checked="settings.showS14"
       label="Gym-count cells (S14, ~0.6 km)"
