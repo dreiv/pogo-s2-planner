@@ -1,12 +1,16 @@
 import { defineStore } from 'pinia'
 import {
+  MARK_STATUS_IDS,
   clampRangeRadius,
   clampZoom,
   parseStoredSettings,
   serializeSettings,
   validateSettings,
+  type MarkStatusId,
   type SettingsData
 } from '../core/settings'
+import { CELL_STATE_FLAG } from '../core/cellVisibility'
+import type { CellState } from '../core/classify'
 
 const STORAGE_KEY = 'pogo-s2-planner:settings'
 
@@ -87,6 +91,20 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleShowPoiImages(): void {
       this.showPoiImages = !this.showPoiImages
+      persist(this.$state)
+    },
+    /** Shows/hides the tint of one S17 cell state. */
+    toggleCellState(state: CellState): void {
+      const key = CELL_STATE_FLAG[state]
+      this[key] = !this[key]
+      persist(this.$state)
+    },
+    /** Shows/hides the map outline of one mark status. The marks themselves are untouched. */
+    toggleMarkStatus(status: MarkStatusId): void {
+      const hidden = new Set<MarkStatusId>(this.hiddenMarkStatuses)
+      if (hidden.has(status)) hidden.delete(status)
+      else hidden.add(status)
+      this.hiddenMarkStatuses = MARK_STATUS_IDS.filter((id) => hidden.has(id))
       persist(this.$state)
     }
   }

@@ -34,7 +34,12 @@ function makeSettings(): ExportedSettings {
     showRange: false,
     rangeRadius: 100,
     rangeCenter: [45.71, 21.31],
-    showPoiImages: true
+    showPoiImages: true,
+    showCellOccupied: true,
+    showCellUncertain: false,
+    showCellFree: true,
+    showCellUnknown: true,
+    hiddenMarkStatuses: ['respins']
   }
 }
 
@@ -347,5 +352,23 @@ describe('parseBackup settings validation', () => {
     const r = parseBackup({ schemaVersion: SCHEMA_VERSION, exportedAt: 0, marks: [], settings: {} })
     expect(r.settings).toEqual(defaultSettings())
     expect(r.settings.s14MinZoom).toBe(13)
+  })
+})
+
+describe('backup keeps the cell-color and mark-visibility settings', () => {
+  it('round-trips them through build + parse', () => {
+    const file = buildBackup([], makeSettings())
+    const r = parseBackup(JSON.parse(JSON.stringify(file)))
+    expect(r.ok).toBe(true)
+    expect(r.settings.showCellUncertain).toBe(false)
+    expect(r.settings.showCellFree).toBe(true)
+    expect(r.settings.hiddenMarkStatuses).toEqual(['respins'])
+  })
+
+  it('an older backup without them gets the defaults', () => {
+    const r = parseBackup({ schemaVersion: SCHEMA_VERSION, exportedAt: 0, marks: [], settings: {} })
+    expect(r.settings.showCellOccupied).toBe(true)
+    expect(r.settings.showCellFree).toBe(false)
+    expect(r.settings.hiddenMarkStatuses).toEqual([])
   })
 })

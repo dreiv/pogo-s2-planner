@@ -26,6 +26,7 @@ describe('App sidebar', () => {
       'section-marks',
       'section-range',
       'section-legend',
+      'section-data',
       'section-import',
       'section-backup',
       'section-glossary',

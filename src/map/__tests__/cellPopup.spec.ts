@@ -28,4 +28,19 @@ describe('buildCellPopupContent', () => {
     expect(none.querySelector('ul')).toBeNull()
     expect(none.textContent).toContain('POIs: 0')
   })
+
+  it('leads with a plain-language title and reason, tokens stay available under Details', () => {
+    const el = buildCellPopupContent({ ...base, state: 'free-uncertain', s14PoiCount: 53, pois: [] })
+    expect(el.querySelector('.cell-popup-title')?.textContent).toBe('Free, data may be incomplete')
+    expect(el.querySelector('.cell-popup-why')?.textContent).toContain('53 POIs')
+    const details = el.querySelector('details')
+    expect(details?.textContent).toContain('S17: 47455d0c')
+    expect(details?.textContent).toContain('State: free-uncertain')
+  })
+
+  it('still renders for a state it does not know (raw state only, no title)', () => {
+    const el = buildCellPopupContent({ ...base, state: 'something-new', pois: [] })
+    expect(el.querySelector('.cell-popup-title')).toBeNull()
+    expect(el.textContent).toContain('State: something-new')
+  })
 })

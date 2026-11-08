@@ -34,9 +34,13 @@ export const TERMS = {
     label: 'Wayfarer',
     text: 'The tool used to nominate new Pokéstops. This app reads a JSON export of Wayfarer search results that you import yourself.'
   },
+  noData: {
+    label: 'No data',
+    text: 'Part of the map you have no Wayfarer data for. Cells there are not necessarily free: the app simply knows nothing about them.'
+  },
   incompleteData: {
     label: 'Incomplete data',
-    text: "Wayfarer limits how many POIs it returns per S14 cell. When a cell reaches 50 or more, some POIs may be missing, so its free cells can't be trusted."
+    text: "Wayfarer limits how many POIs it returns per S14 cell. When a cell reaches 50 or more, some POIs may be missing, so its free cells can't be trusted. On the map, all free cells inside such an S14 cell are tinted indigo, even the ones that look empty."
   },
   marks: {
     label: 'Mark status',

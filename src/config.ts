@@ -11,3 +11,9 @@ export const GRID_MAX_CELLS: number =
   window.matchMedia('(pointer: coarse)').matches
     ? 800
     : 2500
+
+/** From this zoom on, Power Spots and non-game POIs are drawn (below it only stops and gyms). */
+export const POI_FULL_DETAIL_ZOOM = 16
+
+/** The "zoom in for more POIs" map hint appears from this zoom up to POI_FULL_DETAIL_ZOOM. */
+export const POI_HINT_MIN_ZOOM = 14

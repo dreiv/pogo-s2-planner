@@ -35,7 +35,12 @@ function collectSettings(): ExportedSettings {
     showRange: settings.showRange,
     rangeRadius: settings.rangeRadius,
     rangeCenter: settings.rangeCenter,
-    showPoiImages: settings.showPoiImages
+    showPoiImages: settings.showPoiImages,
+    showCellOccupied: settings.showCellOccupied,
+    showCellUncertain: settings.showCellUncertain,
+    showCellFree: settings.showCellFree,
+    showCellUnknown: settings.showCellUnknown,
+    hiddenMarkStatuses: [...settings.hiddenMarkStatuses]
   }
 }
 

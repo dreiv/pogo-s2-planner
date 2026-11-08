@@ -13,6 +13,10 @@ export const ZOOM_MAX = 19
 export const RANGE_RADIUS_MIN = 20
 export const RANGE_RADIUS_MAX = 500
 
+/** Mark statuses, mirrored here because `core` cannot import from `data` (a test keeps them in sync). */
+export const MARK_STATUS_IDS = ['planificat', 'propus', 'in-review', 'respins', 'aprobat'] as const
+export type MarkStatusId = (typeof MARK_STATUS_IDS)[number]
+
 export interface SettingsData {
   center: [number, number]
   zoom: number
@@ -27,6 +31,13 @@ export interface SettingsData {
   rangeRadius: number
   rangeCenter: [number, number] | null
   showPoiImages: boolean
+  /** Which S17 cell states are tinted on the map (grid itself is controlled by showS17). */
+  showCellOccupied: boolean
+  showCellUncertain: boolean
+  showCellFree: boolean
+  showCellUnknown: boolean
+  /** Mark statuses whose outline is hidden on the map (the marks themselves are kept). */
+  hiddenMarkStatuses: MarkStatusId[]
 }
 
 export function defaultSettings(): SettingsData {
@@ -43,7 +54,13 @@ export function defaultSettings(): SettingsData {
     showRange: false,
     rangeRadius: 80,
     rangeCenter: null,
-    showPoiImages: true
+    showPoiImages: true,
+    showCellOccupied: true,
+    showCellUncertain: true,
+    // Free cells stay untinted by default (a whole city of green is noisy); opt-in in the legend.
+    showCellFree: false,
+    showCellUnknown: true,
+    hiddenMarkStatuses: []
   }
 }
 
@@ -62,6 +79,12 @@ function clampedNumber(v: unknown, min: number, max: number, fallback: number): 
 
 function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback
+}
+
+/** Keeps only known statuses, de-duplicated and in canonical order. */
+function markStatusList(v: unknown): MarkStatusId[] {
+  if (!Array.isArray(v)) return []
+  return MARK_STATUS_IDS.filter((id) => v.includes(id))
 }
 
 function latLng(v: unknown): [number, number] | null {
@@ -99,7 +122,12 @@ export function validateSettings(raw: unknown): SettingsData {
     showRange: bool(s.showRange, def.showRange),
     rangeRadius: clampedNumber(s.rangeRadius, RANGE_RADIUS_MIN, RANGE_RADIUS_MAX, def.rangeRadius),
     rangeCenter: latLng(s.rangeCenter),
-    showPoiImages: bool(s.showPoiImages, def.showPoiImages)
+    showPoiImages: bool(s.showPoiImages, def.showPoiImages),
+    showCellOccupied: bool(s.showCellOccupied, def.showCellOccupied),
+    showCellUncertain: bool(s.showCellUncertain, def.showCellUncertain),
+    showCellFree: bool(s.showCellFree, def.showCellFree),
+    showCellUnknown: bool(s.showCellUnknown, def.showCellUnknown),
+    hiddenMarkStatuses: markStatusList(s.hiddenMarkStatuses)
   }
 }
 

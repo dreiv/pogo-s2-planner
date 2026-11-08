@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { MARK_STATUS_ORDER } from '../../markStyle'
 import {
   DEFAULT_CENTER,
+  MARK_STATUS_IDS,
   SETTINGS_VERSION,
   clampRangeRadius,
   defaultSettings,
@@ -99,5 +101,46 @@ describe('clampRangeRadius', () => {
     expect(clampRangeRadius(80)).toBe(80)
     expect(clampRangeRadius(900)).toBe(500)
     expect(clampRangeRadius(NaN)).toBe(80)
+  })
+})
+
+describe('cell colors and mark visibility', () => {
+  it('defaults: free cells untinted, everything else shown, no mark status hidden', () => {
+    const d = defaultSettings()
+    expect(d.showCellOccupied).toBe(true)
+    expect(d.showCellUncertain).toBe(true)
+    expect(d.showCellFree).toBe(false)
+    expect(d.showCellUnknown).toBe(true)
+    expect(d.hiddenMarkStatuses).toEqual([])
+  })
+
+  it('storage written before these settings existed gets the defaults', () => {
+    const old = JSON.stringify({ version: 2, showS17: true, zoom: 15 })
+    const s = parseStoredSettings(old)
+    expect(s.showS17).toBe(true)
+    expect(s.showCellFree).toBe(false)
+    expect(s.hiddenMarkStatuses).toEqual([])
+  })
+
+  it('keeps valid booleans and falls back for wrong types', () => {
+    const s = validateSettings({ showCellFree: true, showCellOccupied: 'no', showCellUnknown: false })
+    expect(s.showCellFree).toBe(true)
+    expect(s.showCellOccupied).toBe(true)
+    expect(s.showCellUnknown).toBe(false)
+  })
+
+  it('hiddenMarkStatuses: drops unknown/duplicate entries and uses canonical order', () => {
+    const s = validateSettings({ hiddenMarkStatuses: ['aprobat', 'bogus', 'propus', 'aprobat', 7] })
+    expect(s.hiddenMarkStatuses).toEqual(['propus', 'aprobat'])
+    expect(validateSettings({ hiddenMarkStatuses: 'propus' }).hiddenMarkStatuses).toEqual([])
+  })
+
+  it('round-trips through serializeSettings', () => {
+    const s = { ...defaultSettings(), showCellFree: true, hiddenMarkStatuses: ['respins' as const] }
+    expect(parseStoredSettings(serializeSettings(s))).toEqual(s)
+  })
+
+  it('MARK_STATUS_IDS matches the statuses the UI knows about', () => {
+    expect([...MARK_STATUS_IDS]).toEqual([...MARK_STATUS_ORDER])
   })
 })

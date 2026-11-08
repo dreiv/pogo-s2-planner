@@ -7,19 +7,21 @@ export const POI_COLORS = {
   other: '#9ca3af'
 } as const
 
+// Amber is reserved for Power Spot dots (POI_COLORS.powerspot). Cell fills must never reuse a
+// POI hue, so "free, data incomplete" is indigo and "no data" is neutral gray.
 export const CELL_STATE_COLORS = {
   occupied: '#ef4444',
   free: '#22c55e',
-  'free-uncertain': '#f59e0b',
-  unknown: 'transparent'
+  'free-uncertain': '#6366f1',
+  unknown: '#6b7280'
 } as const
 
 /** Fill opacity of S17 cells: used by the map and the legend so they cannot drift apart. */
 export const CELL_FILL_OPACITY = {
   occupied: 0.25,
-  free: 0,
-  'free-uncertain': 0.2,
-  unknown: 0
+  free: 0.12,
+  'free-uncertain': 0.22,
+  unknown: 0.1
 } as const
 
 export const MARK_STATUS_COLORS = {

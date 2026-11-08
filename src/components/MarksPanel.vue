@@ -8,14 +8,8 @@ import type { CellMark, MarkStatus } from '../data/db'
 import { CELL_STATE_COLORS, MARK_STATUS_COLORS } from '../theme'
 import { MARK_STATUS_LABELS, MARK_STATUS_ORDER } from '../markStyle'
 import type { CellState } from '../core/classify'
+import { OCCUPANCY_TEXT } from '../cellStateText'
 import '../ui.css'
-
-const OCCUPANCY_TEXT: Record<CellState, string> = {
-  occupied: 'Occupied: an active stop or gym is already here',
-  free: 'Free: no active stop or gym here',
-  'free-uncertain': 'Free, but this S14 cell has incomplete data',
-  unknown: 'No data for this area yet'
-}
 
 const marks = useMarksStore()
 const dataset = useDatasetStore()

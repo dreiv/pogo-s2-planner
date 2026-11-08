@@ -13,7 +13,8 @@ import { parentToken } from '../core/s2'
 import { showCellPopup } from '../map/cellPopup'
 import { MARK_OUTLINE_WEIGHT, MARK_STATUS_DASH } from '../markStyle'
 import { CELL_FILL_OPACITY, CELL_STATE_COLORS, MARK_STATUS_COLORS, GRID_STROKE } from '../theme'
-import { GRID_MAX_CELLS } from '../config'
+import { GRID_MAX_CELLS, POI_FULL_DETAIL_ZOOM, POI_HINT_MIN_ZOOM } from '../config'
+import { isCellStateVisible } from '../core/cellVisibility'
 
 type LeafletMap = ReturnType<typeof createMap>
 
@@ -31,11 +32,26 @@ let flushMoveEndRef: (() => void) | null = null
 
 // Why a grid is currently hidden; one live region instead of one overlay per layer.
 const gridHints = reactive<{ s14: string | null; s17: string | null }>({ s14: null, s17: null })
-const gridHint = computed(() => [gridHints.s14, gridHints.s17].filter(Boolean).join(' · '))
+const currentZoom = ref(settings.zoom)
+
+// Power Spots and non-game POIs only appear from POI_FULL_DETAIL_ZOOM: say so when the person is
+// close to it, instead of leaving them wondering where the other POIs are.
+const poiHint = computed<string | null>(() =>
+  settings.showPois &&
+  !settings.stopGymOnly &&
+  currentZoom.value >= POI_HINT_MIN_ZOOM &&
+  currentZoom.value < POI_FULL_DETAIL_ZOOM
+    ? `Zoom in to ${POI_FULL_DETAIL_ZOOM}+ to see Power Spots and other POIs`
+    : null
+)
+
+const gridHint = computed(() =>
+  [gridHints.s14, gridHints.s17, poiHint.value].filter(Boolean).join(' · ')
+)
 
 const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
   occupied: { fill: CELL_STATE_COLORS.occupied, opacity: CELL_FILL_OPACITY.occupied },
-  free: { fill: CELL_STATE_COLORS.free, opacity: CELL_FILL_OPACITY.free }, // no fill: too noisy
+  free: { fill: CELL_STATE_COLORS.free, opacity: CELL_FILL_OPACITY.free },
   'free-uncertain': {
     fill: CELL_STATE_COLORS['free-uncertain'],
     opacity: CELL_FILL_OPACITY['free-uncertain']
@@ -48,19 +64,22 @@ function makeS17CellStyle(): CellStyleFn {
   // The resolver is memoized per dataset revision and shared with the side panel.
   const stateOf = dataset.cellStateResolver
   return (token: string) => {
-    const c = CELL_COLORS[stateOf(token)]
+    const state = stateOf(token)
+    const c = CELL_COLORS[state]
+    // A state switched off in the legend is drawn untinted (opacity 0), like the old "free".
+    const opacity = isCellStateVisible(state, settings) ? c.opacity : 0
     const mark = markMap.get(token)
-    if (mark) {
+    if (mark && !settings.hiddenMarkStatuses.includes(mark.status)) {
       return {
-        fillColor: c.opacity > 0 ? c.fill : MARK_STATUS_COLORS[mark.status],
-        fillOpacity: c.opacity,
+        fillColor: opacity > 0 ? c.fill : MARK_STATUS_COLORS[mark.status],
+        fillOpacity: opacity,
         color: MARK_STATUS_COLORS[mark.status],
         weight: MARK_OUTLINE_WEIGHT,
         dashArray: MARK_STATUS_DASH[mark.status]
       }
     }
-    if (c.opacity === 0) return null
-    return { fillColor: c.fill, fillOpacity: c.opacity }
+    if (opacity === 0) return null
+    return { fillColor: c.fill, fillOpacity: opacity }
   }
 }
 
@@ -73,11 +92,13 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
   const state = dataset.cellStateResolver(token)
   const s14 = parentToken(token, 14)
   const cellPois = dataset.poiIndex.poisByS17.get(token) ?? []
+  const s14Cell = dataset.cells.find((c) => c.token === s14)
 
   showCellPopup(map, [lat, lng], {
     s17Token: token,
     s14Token: s14,
     state,
+    s14PoiCount: s14Cell ? s14Cell.count : null,
     pois: cellPois.map((p) => ({ id: p.id, title: p.title }))
   })
 
@@ -141,7 +162,7 @@ function syncPoiLayer(): void {
 
   if (settings.showPois && !poiLayer) {
     poiLayer = new PoiLayer(map, {
-      fullDetailZoom: 16,
+      fullDetailZoom: POI_FULL_DETAIL_ZOOM,
       showOther: settings.showOtherPois,
       stopGymOnly: settings.stopGymOnly,
       showImages: settings.showPoiImages
@@ -215,6 +236,11 @@ onMounted(() => {
   })
   flushMoveEndRef = flushMoveEnd
 
+  currentZoom.value = map.getZoom()
+  map.on('zoomend', () => {
+    if (map) currentZoom.value = map.getZoom()
+  })
+
   syncGridLayers()
   syncPoiLayer()
   syncRangeLayer()
@@ -243,6 +269,21 @@ watch(
   () => dataset.revision,
   () => {
     syncPoiLayer()
+    s17Layer?.setCellStyle(makeS17CellStyle())
+  }
+)
+
+// Cell-state and mark-status toggles only restyle existing polygons; no layer is rebuilt.
+watch(
+  () =>
+    [
+      settings.showCellOccupied,
+      settings.showCellUncertain,
+      settings.showCellFree,
+      settings.showCellUnknown,
+      settings.hiddenMarkStatuses.join(',')
+    ] as const,
+  () => {
     s17Layer?.setCellStyle(makeS17CellStyle())
   }
 )

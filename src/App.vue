@@ -11,6 +11,7 @@ import ImportPanel from './components/ImportPanel.vue'
 import BackupPanel from './components/BackupPanel.vue'
 import GlossaryPanel from './components/GlossaryPanel.vue'
 import DangerZone from './components/DangerZone.vue'
+import DataSummary from './components/DataSummary.vue'
 import PwaUpdate from './components/PwaUpdate.vue'
 import { useDatasetStore } from './stores/dataset'
 import { useMarksStore } from './stores/marks'
@@ -85,6 +86,8 @@ function onCellSelected(token: string): void {
         <MarksPanel ref="marksPanelRef" />
         <RangePanel />
         <LegendPanel />
+        <h2 class="group-title">Data &amp; advanced</h2>
+        <DataSummary />
         <ImportPanel />
         <BackupPanel />
         <GlossaryPanel />
@@ -201,6 +204,17 @@ body {
 
 .panel-section {
   margin-bottom: 16px;
+}
+
+.group-title {
+  margin: 24px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .panel-section h3 {

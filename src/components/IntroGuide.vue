@@ -15,13 +15,15 @@ const ui = useUiStore()
       <h3 class="guide-title">How it works</h3>
       <ol class="guide-steps">
         <li>
+          A sample area is already loaded. To use your own data,
           <button type="button" class="link-btn" @click="revealSection('import')">
-            Import your Wayfarer data
+            import a Wayfarer export
           </button>
-          (a JSON export).
+          (JSON).
         </li>
         <li>
-          Turn on the S17 grid under <strong>S2 grids</strong>, then click a free cell on the map.
+          Turn on the S17 grid under <strong>Grids</strong>, then click a cell on the map. Free
+          cells are untinted unless you tick “Free” in <strong>Map legend &amp; layers</strong>.
         </li>
         <li>Track it under <strong>Manual marks</strong>.</li>
       </ol>
