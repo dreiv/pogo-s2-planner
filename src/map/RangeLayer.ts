@@ -19,6 +19,27 @@ export const DEFAULT_RANGE_OPTS: RangeLayerOptions = {
   showS14: true
 }
 
+export interface RangeLayerState {
+  radius: number
+  showS17: boolean
+  showS14: boolean
+  /** null clears the circle; omitted keeps the current center. */
+  center?: [number, number] | null
+}
+
+function centerIcon(): L.DivIcon {
+  const dot = document.createElement('div')
+  dot.style.cssText =
+    'width:12px;height:12px;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);' +
+    `background:${RANGE_COLORS.circle};border:2px solid #fff;`
+  return L.divIcon({
+    className: 'range-center-icon',
+    html: dot,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  })
+}
+
 export class RangeLayer {
   private map: L.Map
   private opts: RangeLayerOptions
@@ -37,19 +58,23 @@ export class RangeLayer {
     this.map.on('click', this.handleMapClick)
   }
 
-  setCenter(lat: number, lng: number): void {
-    this.center = [lat, lng]
-    this.update()
-  }
-
-  setRadius(radius: number): void {
-    this.opts.radius = Math.max(this.opts.minRadius, Math.min(this.opts.maxRadius, radius))
-    this.update()
-  }
-
-  setOptions(opts: Partial<RangeLayerOptions>): void {
-    this.opts = { ...this.opts, ...opts }
-    this.update()
+  /**
+   * Applies radius / grid toggles / center in one pass: one redraw per state change instead of
+   * one per setter, and none at all when nothing actually changed.
+   */
+  apply(state: RangeLayerState): void {
+    const radius = Math.max(this.opts.minRadius, Math.min(this.opts.maxRadius, state.radius))
+    let center = this.center
+    if (state.center !== undefined) center = state.center ? [state.center[0], state.center[1]] : null
+    const changed =
+      radius !== this.opts.radius ||
+      state.showS17 !== this.opts.showS17 ||
+      state.showS14 !== this.opts.showS14 ||
+      center?.[0] !== this.center?.[0] ||
+      center?.[1] !== this.center?.[1]
+    this.opts = { ...this.opts, radius, showS17: state.showS17, showS14: state.showS14 }
+    this.center = center
+    if (changed) this.update()
   }
 
   onCenterChanged(cb: (lat: number, lng: number) => void): void {
@@ -63,7 +88,10 @@ export class RangeLayer {
   }
 
   private update(): void {
-    if (!this.center) return
+    if (!this.center) {
+      this.clear()
+      return
+    }
     const [lat, lng] = this.center
 
     if (this.circle) {
@@ -84,15 +112,19 @@ export class RangeLayer {
       dashArray: '6 4'
     }).addTo(this.map)
 
-    const icon = L.divIcon({
-      className: 'range-center-icon',
-      html: `<div style="width:12px;height:12px;border-radius:50%;background:${RANGE_COLORS.circle};border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
-    })
-    this.centerMarker = L.marker([lat, lng], { icon, interactive: false }).addTo(this.map)
+    this.centerMarker = L.marker([lat, lng], { icon: centerIcon(), interactive: false }).addTo(
+      this.map
+    )
 
     this.updateCellHighlights()
+  }
+
+  private clear(): void {
+    this.circle?.remove()
+    this.centerMarker?.remove()
+    this.circle = null
+    this.centerMarker = null
+    this.cellGroup.clearLayers()
   }
 
   private updateCellHighlights(): void {

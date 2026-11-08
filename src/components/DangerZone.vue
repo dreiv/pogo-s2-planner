@@ -10,7 +10,7 @@ async function handleClear(): Promise<void> {
     `Delete ${dataset.pois.length} POIs, ${dataset.cells.length} cells and ` +
     `${dataset.imports.length} import records from this browser?\n\n` +
     'Your marks and settings are kept. This cannot be undone. ' +
-    'Export a backup with the dataset first if you may need this data again.'
+    'Export a backup with the dataset first if you may need your own data again.'
   if (!confirm(message)) return
   await dataset.clearAll()
 }
@@ -20,7 +20,7 @@ async function handleClear(): Promise<void> {
   <CollapsibleSection id="danger" title="Danger zone">
     <p class="danger-text">
       Removes all imported Wayfarer data (POIs, cells and import history) from this browser. Your
-      marks and settings are kept.
+      marks and settings are kept. The built-in initial data is loaded again on the next reload.
     </p>
     <button
       type="button"

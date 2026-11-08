@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('../MapView.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../PwaUpdate.vue', () => ({ default: { template: '<div />' } }))
+// Keep the 1.5 MB bundled seed out of component tests.
+vi.mock('../../data/initialData', () => ({ loadInitialDataset: async () => null }))
 
 import App from '../../App.vue'
 import { useDatasetStore } from '../../stores/dataset'
@@ -72,5 +74,33 @@ describe('App sidebar', () => {
     await useDatasetStore(pinia).importDocuments([{ name: 'big', json: { result: { data } } }])
     await w.vm.$nextTick()
     expect(w.findAll('*').length).toBeLessThanOrEqual(before + 40)
+  })
+
+  it('keeps the closed side panel out of the tab order and closes it with Escape', async () => {
+    const w = mount(App, { attachTo: document.body, global: { plugins: [createPinia()] } })
+    const panel = w.get('#side-panel')
+    expect(panel.attributes('inert')).toBeDefined()
+    expect(w.get('.panel-toggle').attributes('aria-controls')).toBe('side-panel')
+
+    await w.get('.panel-toggle').trigger('click')
+    expect(panel.attributes('inert')).toBeUndefined()
+    expect(w.get('.panel-toggle').attributes('aria-expanded')).toBe('true')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await w.vm.$nextTick()
+    expect(panel.attributes('inert')).toBeDefined()
+    expect(w.get('.panel-toggle').attributes('aria-expanded')).toBe('false')
+    w.unmount()
+  })
+
+  it('shows an alert when saved data cannot be read', async () => {
+    const pinia = createPinia()
+    const w = mount(App, { global: { plugins: [pinia] } })
+    expect(w.find('.storage-banner').exists()).toBe(false)
+    useDatasetStore(pinia).loadError = 'IndexedDB blocked'
+    await w.vm.$nextTick()
+    const banner = w.get('.storage-banner')
+    expect(banner.attributes('role')).toBe('alert')
+    expect(banner.text()).toContain('IndexedDB blocked')
   })
 })

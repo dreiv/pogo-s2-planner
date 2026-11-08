@@ -17,6 +17,13 @@ npm run check    # lint + typecheck + test + build
 npm run build    # build de producție în dist/
 ```
 
+## Date inițiale
+
+Harta vine pre-populată: `src/data/seed/initial-backup.json` (un backup complet) se încarcă o singură dată,
+într-un chunk separat, când baza de date a browserului e goală (prima deschidere sau după „Delete all” + reload).
+Ca să schimbi datele inițiale, înlocuiește fișierul cu un backup nou exportat din aplicație
+(Backup → export cu dataset).
+
 ## Import export Wayfarer (manual)
 
 1. Deschide [Wayfarer](https://wayfarer.pokemon-go.community/) în browser.

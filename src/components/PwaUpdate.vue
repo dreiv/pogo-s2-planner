@@ -52,7 +52,7 @@ function dismiss(): void {
 <style scoped>
 .pwa-update {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 3000;
@@ -89,6 +89,14 @@ function dismiss(): void {
   font-size: 14px;
   cursor: pointer;
   min-height: 32px;
+}
+
+@media (pointer: coarse) {
+  .pwa-update-btn,
+  .pwa-update-later {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 .pwa-update-btn:disabled,

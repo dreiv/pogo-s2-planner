@@ -50,6 +50,8 @@ export interface S2GridLayerOptions {
   cellStyle?: CellStyleFn
   onCellClick?: (token: string, lat: number, lng: number) => void
   onUpdated?: () => void
+  /** Message to show while the grid is hidden (zoom/cell-count gating), or null to clear it. */
+  onHint?: (message: string | null) => void
 }
 
 export class S2GridLayer {
@@ -58,10 +60,9 @@ export class S2GridLayer {
   private opts: S2GridLayerOptions
   private cache = new VertexCache()
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
-  private hintEl: HTMLElement | null = null
   private destroyed = false
-  /** True while polygons for the current view are on the map. */
-  private drawn = false
+  /** Polygons currently on the map, by S2 token: a view change only adds/removes the delta. */
+  private polys = new Map<string, L.Polygon>()
 
   constructor(map: L.Map, opts: S2GridLayerOptions) {
     this.map = map
@@ -69,14 +70,6 @@ export class S2GridLayer {
 
     this.layerGroup = L.layerGroup()
     this.layerGroup.addTo(map)
-
-    this.hintEl = document.createElement('div')
-    this.hintEl.className = 's2-grid-hint'
-    this.hintEl.style.cssText =
-      'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);' +
-      'z-index:1001;padding:4px 10px;background:rgba(0,0,0,0.6);color:#fff;' +
-      'border-radius:4px;font-size:12px;pointer-events:none;display:none;'
-    map.getContainer().appendChild(this.hintEl)
 
     this.map.on('moveend', this.handleMoveEnd)
     this.map.on('zoomend', this.handleMoveEnd)
@@ -86,10 +79,10 @@ export class S2GridLayer {
   }
 
   // Cell selection is resolved at map level, not per polygon: the POI canvas sits above the grid
-  // canvas and swallows clicks, so polygon handlers never fire while POIs are shown. A click on a
-  // POI marker does not reach here (markers use bubblingMouseEvents: false).
+  // canvas and swallows clicks, and polygons are non-interactive (no per-polygon listeners).
+  // A click on a POI marker does not reach here (markers use bubblingMouseEvents: false).
   private handleMapClick = (e: L.LeafletMouseEvent): void => {
-    if (this.destroyed || !this.drawn) return
+    if (this.destroyed || this.polys.size === 0) return
     const { lat, lng } = e.latlng
     this.opts.onCellClick?.(cellTokenAt(lat, lng, this.opts.level), lat, lng)
   }
@@ -99,27 +92,39 @@ export class S2GridLayer {
     this.debounceTimer = setTimeout(() => this.update(), 150)
   }
 
+  private styleOptions(token: string): L.PathOptions {
+    const style = this.opts.cellStyle?.(token) ?? null
+    return {
+      color: style?.color ?? this.opts.color,
+      weight: style?.weight ?? this.opts.weight,
+      dashArray: style?.dashArray ?? this.opts.dashArray,
+      fill: style !== null,
+      fillColor: style?.fillColor ?? this.opts.color,
+      fillOpacity: style?.fillOpacity ?? 0
+    }
+  }
+
+  private createPolygon(token: string): L.Polygon {
+    let verts = this.cache.get(token)
+    if (!verts) {
+      verts = cellVertices(token)
+      this.cache.set(token, verts)
+    }
+    // Leaflet expects [lat, lng]
+    const latlngs: L.LatLngExpression[] = verts.map(
+      ([lat, lng]) => [lat, lng] as [number, number]
+    )
+    return L.polygon(latlngs, { ...this.styleOptions(token), interactive: false })
+  }
+
+  private hide(message: string | null): void {
+    this.clearPolygons()
+    this.opts.onHint?.(message)
+  }
+
   update(): void {
     if (this.destroyed) return
     const perfStart = import.meta.env.DEV ? performance.now() : 0
-
-    const zoom = this.map.getZoom()
-    const gating = shouldShowGrid({
-      zoom,
-      minZoom: this.opts.minZoom,
-      maxCells: this.opts.maxCells
-    })
-
-    if (!gating.visible) {
-      this.clearPolygons()
-      if (gating.hint) {
-        this.hintEl!.textContent = gating.hint
-        this.hintEl!.style.display = 'block'
-      }
-      return
-    }
-
-    if (this.hintEl) this.hintEl.style.display = 'none'
 
     const bounds = this.map.getBounds()
     const b: Bounds = {
@@ -129,50 +134,43 @@ export class S2GridLayer {
       east: bounds.getEast()
     }
 
+    // Zoom and estimated cell count are checked first, so a hopeless view never pays for covering.
+    const gating = shouldShowGrid({
+      zoom: this.map.getZoom(),
+      minZoom: this.opts.minZoom,
+      maxCells: this.opts.maxCells,
+      bounds: b,
+      level: this.opts.level
+    })
+    if (!gating.visible) {
+      this.hide(gating.hint)
+      return
+    }
+
     const { tokens, truncated } = cellsCoveringBounds(b, this.opts.level, this.opts.maxCells)
 
     // Too many cells for this view: draw nothing rather than a misleading partial grid.
     if (truncated) {
-      this.clearPolygons()
-      if (this.hintEl) {
-        this.hintEl.textContent = 'Zoom in to see the grid'
-        this.hintEl.style.display = 'block'
-      }
+      this.hide(`Too many cells in view: zoom in to see the S${this.opts.level} grid`)
       return
     }
-    if (this.hintEl) this.hintEl.style.display = 'none'
+    this.opts.onHint?.(null)
 
-    this.clearPolygons()
-
+    // Diff against what is already drawn: panning keeps most polygons untouched.
+    const wanted = new Set(tokens)
+    for (const [token, poly] of this.polys) {
+      if (!wanted.has(token)) {
+        this.layerGroup.removeLayer(poly)
+        this.polys.delete(token)
+      }
+    }
     for (const token of tokens) {
-      let verts = this.cache.get(token)
-      if (!verts) {
-        verts = cellVertices(token)
-        this.cache.set(token, verts)
-      }
-      // Leaflet expects [lat, lng]
-      const latlngs: L.LatLngExpression[] = verts.map(
-        ([lat, lng]) => [lat, lng] as [number, number]
-      )
-
-      const style = this.opts.cellStyle?.(token) ?? null
-      const polyOpts: L.PathOptions = {
-        color: style?.color ?? this.opts.color,
-        weight: style?.weight ?? this.opts.weight,
-        dashArray: style?.dashArray ?? this.opts.dashArray,
-        fill: style !== null,
-        fillColor: style?.fillColor ?? this.opts.color,
-        fillOpacity: style?.fillOpacity ?? 0,
-        interactive: false
-      }
-
-      const poly = L.polygon(latlngs, polyOpts)
-      ;(poly as L.Polygon & { _s2Token?: string })._s2Token = token
-
-      poly.addTo(this.layerGroup)
+      if (this.polys.has(token)) continue
+      const poly = this.createPolygon(token)
+      this.layerGroup.addLayer(poly)
+      this.polys.set(token, poly)
     }
 
-    this.drawn = true
     this.opts.onUpdated?.()
 
     if (import.meta.env.DEV) {
@@ -187,29 +185,12 @@ export class S2GridLayer {
   }
 
   refreshStyles(): void {
-    const fn = this.opts.cellStyle
-    if (!fn) return
-    this.layerGroup.eachLayer((layer) => {
-      if (layer instanceof L.Polygon) {
-        const token = (layer as L.Polygon & { _s2Token?: string })._s2Token
-        if (token) {
-          const style = fn(token) ?? null
-          const polyOpts: L.PathOptions = {
-            color: style?.color ?? this.opts.color,
-            weight: style?.weight ?? this.opts.weight,
-            dashArray: style?.dashArray ?? this.opts.dashArray,
-            fill: style !== null,
-            fillColor: style?.fillColor ?? this.opts.color,
-            fillOpacity: style?.fillOpacity ?? 0
-          }
-          layer.setStyle(polyOpts)
-        }
-      }
-    })
+    if (!this.opts.cellStyle) return
+    for (const [token, poly] of this.polys) poly.setStyle(this.styleOptions(token))
   }
 
   private clearPolygons(): void {
-    this.drawn = false
+    this.polys.clear()
     this.layerGroup.clearLayers()
   }
 
@@ -224,9 +205,7 @@ export class S2GridLayer {
     this.map.off('click', this.handleMapClick)
     this.layerGroup.remove()
     this.cache.clear()
-    if (this.hintEl && this.hintEl.parentNode) {
-      this.hintEl.parentNode.removeChild(this.hintEl)
-    }
-    this.hintEl = null
+    this.polys.clear()
+    this.opts.onHint?.(null)
   }
 }

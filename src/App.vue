@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import MapView from './components/MapView.vue'
 import IntroGuide from './components/IntroGuide.vue'
 import MarksPanel from './components/MarksPanel.vue'
@@ -16,14 +16,35 @@ import { useDatasetStore } from './stores/dataset'
 import { useMarksStore } from './stores/marks'
 
 const panelOpen = ref(false)
+const panelRef = ref<HTMLElement | null>(null)
+const toggleRef = ref<HTMLButtonElement | null>(null)
 const dataset = useDatasetStore()
 const marks = useMarksStore()
 const marksPanelRef = ref<InstanceType<typeof MarksPanel> | null>(null)
 
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && panelOpen.value && !e.defaultPrevented) {
+    panelOpen.value = false
+  }
+}
+
+// Focus follows the panel: into it on open, back to the toggle on close
+// (only when focus was inside, so closing by clicking the map does not steal it).
+watch(panelOpen, async (open) => {
+  const hadFocusInside = panelRef.value?.contains(document.activeElement) ?? false
+  await nextTick()
+  if (open) panelRef.value?.focus({ preventScroll: true })
+  else if (hadFocusInside) toggleRef.value?.focus()
+})
+
 onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  // dataset.load() records failures in loadError; the banner below surfaces them.
   dataset.load().catch(console.error)
   marks.load().catch(console.error)
 })
+
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
 function onCellSelected(token: string): void {
   marksPanelRef.value?.selectCell(token)
@@ -33,7 +54,29 @@ function onCellSelected(token: string): void {
 <template>
   <div id="app-root">
     <MapView @cell-selected="onCellSelected" />
-    <aside class="side-panel" :class="{ open: panelOpen }" aria-label="Planner sidebar">
+    <div
+      v-if="dataset.loadError || dataset.storageError"
+      class="storage-banner"
+      role="alert"
+    >
+      <span v-if="dataset.loadError">
+        Could not read saved data ({{ dataset.loadError }}). The app is running with an empty,
+        unsaved dataset.
+      </span>
+      <span v-else>
+        Could not save to this browser ({{ dataset.storageError }}). Your changes are kept only
+        until you reload; export a backup.
+      </span>
+    </div>
+    <aside
+      id="side-panel"
+      ref="panelRef"
+      class="side-panel"
+      :class="{ open: panelOpen }"
+      :inert="panelOpen ? undefined : true"
+      tabindex="-1"
+      aria-label="Planner sidebar"
+    >
       <div class="panel-content">
         <h2>Pogo S2 Planner</h2>
         <IntroGuide />
@@ -49,9 +92,11 @@ function onCellSelected(token: string): void {
       </div>
     </aside>
     <button
+      ref="toggleRef"
       class="panel-toggle"
       :class="{ open: panelOpen }"
       :aria-expanded="panelOpen"
+      aria-controls="side-panel"
       aria-label="Toggle sidebar"
       @click="panelOpen = !panelOpen"
     >
@@ -124,10 +169,29 @@ body {
   right: 280px;
 }
 
+.side-panel:focus {
+  outline: none;
+}
+
 .panel-content {
   padding: 0 16px;
   overflow-y: auto;
   flex: 1;
+}
+
+.storage-banner {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 56px;
+  right: 56px;
+  z-index: 1500;
+  padding: 8px 12px;
+  border: 1px solid var(--accent-red);
+  border-radius: 8px;
+  background: var(--accent-red-bg);
+  color: var(--accent-red-text);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .placeholder {
@@ -191,10 +255,32 @@ body {
   background: var(--bg-hover);
 }
 
+.leaflet-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 .leaflet-control-zoom a.leaflet-disabled {
   background: var(--bg-hover);
   color: var(--text-muted);
   cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-panel,
+  .panel-toggle {
+    transition: none;
+  }
+
+  .leaflet-zoom-anim .leaflet-zoom-animated {
+    transition: none !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .panel-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -268,7 +354,12 @@ body {
   }
 
   .panel-content {
-    padding: 12px 12px 24px;
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .storage-banner {
+    left: 12px;
+    right: 12px;
   }
 
   .toggle-row {

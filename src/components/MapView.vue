@@ -1,21 +1,18 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, provide, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { createMap } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
-import { MAP_CONTEXT_KEY, type MapContext } from '../map/MapContext'
 import { S2GridLayer, type CellStyleFn } from '../map/S2GridLayer'
 import { PoiLayer } from '../map/PoiLayer'
 import { RangeLayer } from '../map/RangeLayer'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
 import { useMarksStore } from '../stores/marks'
-import { DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
-import { classifyS17Token } from '../core/cellState'
+import type { CellState } from '../core/classify'
 import { parentToken } from '../core/s2'
-import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
 import { showCellPopup } from '../map/cellPopup'
 import { MARK_OUTLINE_WEIGHT, MARK_STATUS_DASH } from '../markStyle'
-import { CELL_STATE_COLORS, MARK_STATUS_COLORS, GRID_STROKE } from '../theme'
+import { CELL_FILL_OPACITY, CELL_STATE_COLORS, MARK_STATUS_COLORS, GRID_STROKE } from '../theme'
 import { GRID_MAX_CELLS } from '../config'
 
 type LeafletMap = ReturnType<typeof createMap>
@@ -32,52 +29,26 @@ let poiLayer: PoiLayer | null = null
 let rangeLayer: RangeLayer | null = null
 let flushMoveEndRef: (() => void) | null = null
 
-// Cell state is derived per visible S17 token, so empty cells inside a covered S14 cell are "free" too.
-let cachedClassifyKey = ''
-let stateCache = new Map<string, CellState>()
-let s14Coverage = new Map<string, boolean>() // S14 token -> truncated
-let cachedPoiIndex: PoiIndex | null = null
-
-function getPoiIndex(): PoiIndex {
-  if (!cachedPoiIndex) {
-    cachedPoiIndex = buildPoiIndex(dataset.pois)
-  }
-  return cachedPoiIndex
-}
-
-function ensureClassifyCache(): void {
-  const key = `${dataset.revision}`
-  if (key === cachedClassifyKey) return
-  s14Coverage = new Map(dataset.cells.map((c) => [c.token, c.truncated]))
-  stateCache = new Map()
-  cachedClassifyKey = key
-}
-
-function cellStateOf(token: string): CellState {
-  ensureClassifyCache()
-  const hit = stateCache.get(token)
-  if (hit) return hit
-  const truncated = s14Coverage.get(parentToken(token, 14))
-  const state = classifyS17Token(
-    getPoiIndex().poisByS17.get(token) ?? [],
-    { covered: truncated !== undefined, truncated: truncated ?? false },
-    DEFAULT_CLASSIFY_OPTS
-  )
-  stateCache.set(token, state)
-  return state
-}
+// Why a grid is currently hidden; one live region instead of one overlay per layer.
+const gridHints = reactive<{ s14: string | null; s17: string | null }>({ s14: null, s17: null })
+const gridHint = computed(() => [gridHints.s14, gridHints.s17].filter(Boolean).join(' · '))
 
 const CELL_COLORS: Record<CellState, { fill: string; opacity: number }> = {
-  occupied: { fill: CELL_STATE_COLORS.occupied, opacity: 0.25 },
-  free: { fill: CELL_STATE_COLORS.free, opacity: 0 }, // no fill: too noisy
-  'free-uncertain': { fill: CELL_STATE_COLORS['free-uncertain'], opacity: 0.2 },
-  unknown: { fill: CELL_STATE_COLORS.unknown, opacity: 0 }
+  occupied: { fill: CELL_STATE_COLORS.occupied, opacity: CELL_FILL_OPACITY.occupied },
+  free: { fill: CELL_STATE_COLORS.free, opacity: CELL_FILL_OPACITY.free }, // no fill: too noisy
+  'free-uncertain': {
+    fill: CELL_STATE_COLORS['free-uncertain'],
+    opacity: CELL_FILL_OPACITY['free-uncertain']
+  },
+  unknown: { fill: CELL_STATE_COLORS.unknown, opacity: CELL_FILL_OPACITY.unknown }
 }
 
 function makeS17CellStyle(): CellStyleFn {
   const markMap = marks.markByToken
+  // The resolver is memoized per dataset revision and shared with the side panel.
+  const stateOf = dataset.cellStateResolver
   return (token: string) => {
-    const c = CELL_COLORS[cellStateOf(token)]
+    const c = CELL_COLORS[stateOf(token)]
     const mark = markMap.get(token)
     if (mark) {
       return {
@@ -99,9 +70,9 @@ const emit = defineEmits<{
 
 function handleS17CellClick(token: string, lat: number, lng: number): void {
   if (!map) return
-  const state = cellStateOf(token)
+  const state = dataset.cellStateResolver(token)
   const s14 = parentToken(token, 14)
-  const cellPois = getPoiIndex().poisByS17.get(token) ?? []
+  const cellPois = dataset.poiIndex.poisByS17.get(token) ?? []
 
   showCellPopup(map, [lat, lng], {
     s17Token: token,
@@ -111,6 +82,17 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
   })
 
   emit('cellSelected', token)
+}
+
+function destroyGridLayers(): void {
+  if (s14Layer) {
+    s14Layer.destroy()
+    s14Layer = null
+  }
+  if (s17Layer) {
+    s17Layer.destroy()
+    s17Layer = null
+  }
 }
 
 function syncGridLayers(): void {
@@ -123,7 +105,9 @@ function syncGridLayers(): void {
       maxCells: GRID_MAX_CELLS,
       color: GRID_STROKE.s14,
       weight: 2,
-      onUpdated: () => poiLayer?.bringToFront()
+      onHint: (message) => {
+        gridHints.s14 = message
+      }
     })
   } else if (!settings.showS14 && s14Layer) {
     s14Layer.destroy()
@@ -140,14 +124,14 @@ function syncGridLayers(): void {
       dashArray: '3 5',
       cellStyle: makeS17CellStyle(),
       onCellClick: handleS17CellClick,
-      onUpdated: () => poiLayer?.bringToFront()
+      onHint: (message) => {
+        gridHints.s17 = message
+      }
     })
   } else if (!settings.showS17 && s17Layer) {
     s17Layer.destroy()
     s17Layer = null
   }
-
-  poiLayer?.bringToFront()
 }
 
 let lastPoiRevision = -1
@@ -192,22 +176,18 @@ function syncRangeLayer(): void {
     rangeLayer.onCenterChanged((lat, lng) => {
       settings.setRangeCenter([lat, lng])
     })
-    if (settings.rangeCenter) {
-      rangeLayer.setCenter(settings.rangeCenter[0], settings.rangeCenter[1])
-    }
   } else if (!settings.showRange && rangeLayer) {
     rangeLayer.destroy()
     rangeLayer = null
-  } else if (rangeLayer) {
-    rangeLayer.setRadius(settings.rangeRadius)
-    rangeLayer.setOptions({
-      showS17: settings.showS17,
-      showS14: settings.showS14
-    })
-    if (settings.rangeCenter) {
-      rangeLayer.setCenter(settings.rangeCenter[0], settings.rangeCenter[1])
-    }
   }
+
+  // A single call per change: radius, toggles and center are applied together.
+  rangeLayer?.apply({
+    radius: settings.rangeRadius,
+    showS17: settings.showS17,
+    showS14: settings.showS14,
+    center: settings.rangeCenter
+  })
 }
 
 onMounted(() => {
@@ -217,8 +197,6 @@ onMounted(() => {
     center: settings.center,
     zoom: settings.zoom
   })
-
-  provide(MAP_CONTEXT_KEY, { map } satisfies MapContext)
 
   let moveEndTimer: ReturnType<typeof setTimeout> | null = null
   const flushMoveEnd = (): void => {
@@ -242,13 +220,11 @@ onMounted(() => {
   syncRangeLayer()
 })
 
+// Layer options (min zoom) are fixed at construction, so both grids are rebuilt on any change.
 watch(
   () => [settings.showS14, settings.showS17, settings.s14MinZoom, settings.s17MinZoom] as const,
   () => {
-    if (s14Layer) {
-      s14Layer.destroy()
-      s14Layer = null
-    }
+    destroyGridLayers()
     syncGridLayers()
   }
 )
@@ -266,32 +242,30 @@ watch(
 watch(
   () => dataset.revision,
   () => {
-    cachedClassifyKey = ''
-    cachedPoiIndex = null
     syncPoiLayer()
-    if (s17Layer) {
-      s17Layer.setCellStyle(makeS17CellStyle())
-    }
-    poiLayer?.bringToFront()
+    s17Layer?.setCellStyle(makeS17CellStyle())
   }
 )
 
 watch(
   () => marks.revision,
   () => {
-    if (s17Layer) {
-      s17Layer.setCellStyle(makeS17CellStyle())
-    }
+    s17Layer?.setCellStyle(makeS17CellStyle())
   }
 )
 
 onBeforeUnmount(() => {
   if (flushMoveEndRef) flushMoveEndRef()
   if (cleanupLocate) cleanupLocate()
-  if (s14Layer) { s14Layer.destroy(); s14Layer = null }
-  if (s17Layer) { s17Layer.destroy(); s17Layer = null }
-  if (poiLayer) { poiLayer.destroy(); poiLayer = null }
-  if (rangeLayer) { rangeLayer.destroy(); rangeLayer = null }
+  destroyGridLayers()
+  if (poiLayer) {
+    poiLayer.destroy()
+    poiLayer = null
+  }
+  if (rangeLayer) {
+    rangeLayer.destroy()
+    rangeLayer = null
+  }
   if (map) {
     map.remove()
     map = null
@@ -308,8 +282,23 @@ const handleLocate = (): void => {
 <template>
   <div class="map-wrapper">
     <div ref="containerRef" class="map-container"></div>
-    <button class="locate-btn" title="My location" @click="handleLocate">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div v-if="gridHint" class="grid-hint" role="status" aria-live="polite">{{ gridHint }}</div>
+    <button
+      type="button"
+      class="locate-btn"
+      title="My location"
+      aria-label="Show my location"
+      @click="handleLocate"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
         <circle cx="12" cy="12" r="3" />
         <circle cx="12" cy="12" r="8" />
         <line x1="12" y1="1" x2="12" y2="4" />
@@ -331,6 +320,22 @@ const handleLocate = (): void => {
 .map-container {
   width: 100%;
   height: 100%;
+}
+
+.grid-hint {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 1001;
+  max-width: calc(100% - 120px);
+  padding: 4px 10px;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
 }
 
 .locate-btn {

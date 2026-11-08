@@ -7,10 +7,7 @@ import { useDatasetStore } from '../stores/dataset'
 import type { CellMark, MarkStatus } from '../data/db'
 import { CELL_STATE_COLORS, MARK_STATUS_COLORS } from '../theme'
 import { MARK_STATUS_LABELS, MARK_STATUS_ORDER } from '../markStyle'
-import { buildPoiIndex } from '../core/poiIndex'
-import { classifyS17Token } from '../core/cellState'
-import { DEFAULT_CLASSIFY_OPTS, type CellState } from '../core/classify'
-import { parentToken } from '../core/s2'
+import type { CellState } from '../core/classify'
 import '../ui.css'
 
 const OCCUPANCY_TEXT: Record<CellState, string> = {
@@ -35,18 +32,10 @@ const currentMark = computed(() =>
   selectedToken.value ? marks.markByToken.get(selectedToken.value) : undefined
 )
 
-const poiIndex = computed(() => buildPoiIndex(dataset.pois))
-
+// Same memoized resolver the map uses: one POI index for the whole app.
 const occupancy = computed<CellState | null>(() => {
   const token = selectedToken.value
-  if (!token) return null
-  const s14 = parentToken(token, 14)
-  const cell = dataset.cells.find((c) => c.token === s14)
-  return classifyS17Token(
-    poiIndex.value.poisByS17.get(token) ?? [],
-    { covered: cell !== undefined, truncated: cell?.truncated ?? false },
-    DEFAULT_CLASSIFY_OPTS
-  )
+  return token ? dataset.cellStateResolver(token) : null
 })
 
 const markCountText = computed(() => {
@@ -54,27 +43,59 @@ const markCountText = computed(() => {
   return `${n} marked ${n === 1 ? 'cell' : 'cells'}`
 })
 
+// Typing a note must not rewrite the DB and restyle every polygon on each keystroke:
+// the note is committed after a short pause, on blur, when the cell/status changes, or on unmount.
+const NOTE_DEBOUNCE_MS = 400
+let noteTimer: ReturnType<typeof setTimeout> | null = null
+let pendingNote: { token: string; note: string } | null = null
+
+function cancelNote(): void {
+  if (noteTimer !== null) {
+    clearTimeout(noteTimer)
+    noteTimer = null
+  }
+  pendingNote = null
+}
+
+function flushNote(): void {
+  if (noteTimer !== null) {
+    clearTimeout(noteTimer)
+    noteTimer = null
+  }
+  const pending = pendingNote
+  pendingNote = null
+  if (!pending) return
+  const mark = marks.markByToken.get(pending.token)
+  if (mark) void marks.setMark(pending.token, mark.status, pending.note)
+}
+
 function selectCell(token: string): void {
+  flushNote()
   selectedToken.value = token
   noteInput.value = marks.markByToken.get(token)?.note ?? ''
 }
 
 function setStatus(status: MarkStatus): void {
   if (!selectedToken.value) return
-  marks.setMark(selectedToken.value, status, noteInput.value)
+  cancelNote()
+  void marks.setMark(selectedToken.value, status, noteInput.value)
 }
 
 function onNoteInput(e: Event): void {
-  noteInput.value = (e.target as HTMLInputElement).value
+  const note = (e.target as HTMLInputElement).value
+  noteInput.value = note
   const token = selectedToken.value
-  const mark = token ? marks.markByToken.get(token) : undefined
-  if (token && mark) marks.setMark(token, mark.status, noteInput.value)
+  if (!token || !marks.markByToken.has(token)) return
+  pendingNote = { token, note }
+  if (noteTimer !== null) clearTimeout(noteTimer)
+  noteTimer = setTimeout(flushNote, NOTE_DEBOUNCE_MS)
 }
 
 async function removeMark(): Promise<void> {
   const token = selectedToken.value
   const mark = currentMark.value
   if (!token || !mark) return
+  cancelNote()
   await marks.removeMark(token)
   noteInput.value = ''
   removed.value = mark
@@ -95,6 +116,7 @@ async function undoRemove(): Promise<void> {
 
 onBeforeUnmount(() => {
   if (undoTimer) clearTimeout(undoTimer)
+  flushNote()
 })
 
 defineExpose({ selectCell })
@@ -161,6 +183,7 @@ defineExpose({ selectCell })
         placeholder="Optional note"
         :value="noteInput"
         @input="onNoteInput"
+        @change="flushNote"
       />
 
       <button

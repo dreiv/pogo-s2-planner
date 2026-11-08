@@ -74,6 +74,17 @@
   }
 }
 
+.cell-popup {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.cell-popup-pois {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+
 .poi-popup {
   font-size: 13px;
   line-height: 1.45;

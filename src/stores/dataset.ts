@@ -3,8 +3,12 @@ import { markRaw } from 'vue'
 import { db, type ImportRecord } from '../data/db'
 import { parseWayfarer, type ParsedCell, type ParsedPoi } from '../core/wayfarer/parse'
 import { mergeMany, type MergeStats } from '../core/wayfarer/merge'
-import { poiKind } from '../core/classify'
-import defaultFixture from '../../fixtures/wayfarer-sample.json'
+import { DEFAULT_CLASSIFY_OPTS, poiKind, type CellState } from '../core/classify'
+import { buildCoverage, createCellStateResolver } from '../core/cellState'
+import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
+import { parentToken } from '../core/s2'
+import { sanitizeDataset } from '../core/backup'
+import { loadInitialDataset } from '../data/initialData'
 
 export interface ImportSummary {
   documents: number
@@ -15,6 +19,8 @@ export interface ImportSummary {
   cellsAdded: number
   cellsUpdated: number
   cellsSkippedOlder: number
+  /** Cells whose declared level is not S14: this planner only colors S14 exports. */
+  nonS14Cells: number
   warnings: string[]
   // Legacy fields (kept for compatibility)
   poiCount: number
@@ -33,6 +39,14 @@ interface DatasetState {
   imports: ImportRecord[]
   loaded: boolean
   revision: number
+  /** Set when reading IndexedDB failed; the app then runs with an empty in-memory dataset. */
+  loadError: string | null
+  /** Set when a write to IndexedDB failed; the change exists in memory only until reload. */
+  storageError: string | null
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error && err.message ? err.message : String(err)
 }
 
 function countByKind(pois: ParsedPoi[]): {
@@ -61,31 +75,128 @@ export const useDatasetStore = defineStore('dataset', {
     cells: [],
     imports: [],
     loaded: false,
-    revision: 0
+    revision: 0,
+    loadError: null,
+    storageError: null
   }),
+
+  getters: {
+    /** Shared, memoized index (rebuilt only when the dataset changes). */
+    poiIndex(state): PoiIndex {
+      void state.revision
+      return markRaw(buildPoiIndex(state.pois))
+    },
+    /** Shared S17 state lookup used by the map and the side panel. */
+    cellStateResolver(state): (token17: string) => CellState {
+      void state.revision
+      return markRaw(
+        createCellStateResolver({
+          poisByS17: this.poiIndex.poisByS17,
+          coverage: buildCoverage(state.cells),
+          opts: DEFAULT_CLASSIFY_OPTS,
+          parentOf: (token17) => parentToken(token17, 14)
+        })
+      )
+    }
+  },
 
   actions: {
     async load(): Promise<void> {
       if (this.loaded) return
-      const [pois, cells, imports] = await Promise.all([
-        db.pois.toArray(),
-        db.cells.toArray(),
-        db.imports.orderBy('importedAt').reverse().toArray()
-      ])
-      // First open (empty DB, never imported): seed with bundled sample data.
-      if (pois.length === 0 && cells.length === 0 && imports.length === 0) {
-        await this.importDocuments([{ name: 'sample-data', json: defaultFixture }])
-        this.loaded = true
-        return
+      try {
+        const [pois, cells, imports] = await Promise.all([
+          db.pois.toArray(),
+          db.cells.toArray(),
+          db.imports.orderBy('importedAt').reverse().toArray()
+        ])
+        this.pois = markRaw(pois)
+        this.cells = markRaw(cells)
+        this.imports = imports
+        this.loadError = null
+      } catch (err) {
+        // IndexedDB unavailable or blocked (private mode, storage policy, corrupt DB).
+        console.error('Could not read the local database:', err)
+        this.loadError = errorMessage(err)
       }
+      this.loaded = true
+      this.revision++
+
+      // Empty database (first open, or after "Delete all" + reload): pre-populate the map with the
+      // bundled initial dataset, so a fresh visitor sees data right away.
+      if (this.pois.length === 0 && this.cells.length === 0) {
+        await this.seedInitialData()
+      }
+    },
+
+    /**
+     * Fills the empty dataset with the bundled initial one. If the database could not be read
+     * (`loadError`), the seed is shown from memory only and nothing is written, so a transient
+     * read failure can never overwrite data that is really stored. Failures are only logged.
+     */
+    async seedInitialData(): Promise<void> {
+      try {
+        const raw = await loadInitialDataset()
+        if (!raw) return
+        const seed = sanitizeDataset(raw)
+        if (this.loadError) {
+          this.pois = markRaw(seed.pois)
+          this.cells = markRaw(seed.cells)
+          this.revision++
+        } else {
+          await this.replaceAll(seed.pois, seed.cells, 'initial data')
+        }
+      } catch (err) {
+        console.error('Could not load the initial data:', err)
+      }
+    },
+
+    /**
+     * Writes the dataset in one transaction. A failure (quota, blocked DB) is recorded in
+     * `storageError` instead of being swallowed or discarding the in-memory change.
+     */
+    async persistDataset(
+      pois: ParsedPoi[],
+      cells: ParsedCell[],
+      imports: { clear: boolean; add: ImportRecord[] }
+    ): Promise<void> {
+      try {
+        await db.transaction('rw', [db.pois, db.cells, db.imports], async () => {
+          await db.pois.clear()
+          await db.cells.clear()
+          await db.pois.bulkPut(pois)
+          await db.cells.bulkPut(cells)
+          if (imports.clear) await db.imports.clear()
+          if (imports.add.length > 0) await db.imports.bulkAdd(imports.add)
+        })
+        this.storageError = null
+      } catch (err) {
+        console.error('Could not save to the local database:', err)
+        this.storageError = errorMessage(err)
+      }
+    },
+
+    /**
+     * Replaces the whole dataset (backup restore). Input must already be validated
+     * (see `sanitizeDataset`); import history is reset to a single restore record.
+     */
+    async replaceAll(pois: ParsedPoi[], cells: ParsedCell[], label: string): Promise<void> {
+      const record: ImportRecord = {
+        id: `${Date.now()}-restore-${Math.random().toString(36).slice(2, 8)}`,
+        fileName: label,
+        importedAt: Date.now(),
+        poiCount: pois.length,
+        cellCount: cells.length,
+        truncatedCount: cells.filter((c) => c.truncated).length,
+        warningCount: 0
+      }
+      await this.persistDataset(pois, cells, { clear: true, add: [record] })
       this.pois = markRaw(pois)
       this.cells = markRaw(cells)
-      this.imports = imports
-      this.loaded = true
+      this.imports = [record]
       this.revision++
     },
 
-    /** Replaces all tables in one transaction; clearing first avoids ConstraintError. */
+    /** Merges the documents into the dataset and rewrites the tables in one transaction. */
     async importDocuments(docs: { name: string; json: unknown }[]): Promise<ImportSummary> {
       const now = Date.now()
       const parsed = docs.map((d) => ({ name: d.name, result: parseWayfarer(d.json) }))
@@ -110,15 +221,9 @@ export const useDatasetStore = defineStore('dataset', {
         warningCount: p.result.warnings.length
       }))
 
-      await db.transaction('rw', [db.pois, db.cells, db.imports], async () => {
-        await db.pois.clear()
-        await db.cells.clear()
-        await db.pois.bulkPut(merged.pois)
-        await db.cells.bulkPut(merged.cells)
-        await db.imports.bulkAdd(records)
-      })
+      // Existing import records stay; only the new ones are added.
+      await this.persistDataset(merged.pois, merged.cells, { clear: false, add: records })
 
-      // Update state only after commit
       this.pois = markRaw(merged.pois)
       this.cells = markRaw(merged.cells)
       this.imports = [...records.reverse(), ...this.imports]
@@ -138,6 +243,10 @@ export const useDatasetStore = defineStore('dataset', {
         cellsAdded: stats.cellsAdded,
         cellsUpdated: stats.cellsUpdated,
         cellsSkippedOlder: stats.cellsSkippedOlder,
+        nonS14Cells: parsed.reduce(
+          (n, p) => n + p.result.cells.filter((c) => c.level !== null && c.level !== 14).length,
+          0
+        ),
         warnings: allWarnings,
         poiCount: allPois.length,
         stopCount: kinds.stop,
@@ -158,11 +267,17 @@ export const useDatasetStore = defineStore('dataset', {
     },
 
     async clearAll(): Promise<void> {
-      await db.transaction('rw', db.pois, db.cells, db.imports, async () => {
-        await db.pois.clear()
-        await db.cells.clear()
-        await db.imports.clear()
-      })
+      try {
+        await db.transaction('rw', db.pois, db.cells, db.imports, async () => {
+          await db.pois.clear()
+          await db.cells.clear()
+          await db.imports.clear()
+        })
+        this.storageError = null
+      } catch (err) {
+        console.error('Could not clear the local database:', err)
+        this.storageError = errorMessage(err)
+      }
       this.pois = markRaw([])
       this.cells = markRaw([])
       this.imports = []

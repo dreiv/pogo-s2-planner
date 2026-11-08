@@ -26,6 +26,9 @@ const KIND_RADIUS: Record<PoiKind, number> = {
   other: 4
 }
 
+/** Markers are created for POIs within the viewport padded by this ratio (smooth short pans). */
+const VIEWPORT_PAD = 0.5
+
 function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolean {
   if (opts.stopGymOnly && kind !== 'stop' && kind !== 'gym') return false
   if (!opts.showOther && kind === 'other') return false
@@ -33,11 +36,13 @@ function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolea
   return true
 }
 
-interface MarkerEntry {
+interface PoiEntry {
   poi: ParsedPoi
   kind: PoiKind
-  marker: L.CircleMarker
+  /** True while the marker is on the map. */
   visible: boolean
+  /** Created lazily when the POI enters the viewport, dropped when it leaves. */
+  marker: L.CircleMarker | null
 }
 
 /** Extra hit radius (px) around each marker; larger for touch. */
@@ -51,101 +56,120 @@ function hitTolerance(): number {
 
 const POI_PANE = 'poiPane'
 
+/**
+ * POIs are plain records; a circleMarker exists only for POIs that pass the kind/zoom filter AND
+ * lie inside the padded viewport. Clicks are handled once on the FeatureGroup (delegated) and the
+ * popup is built on demand, so there is no per-marker popup binding or listener.
+ */
 export class PoiLayer {
-  private group: L.LayerGroup
-  private pois: ParsedPoi[] = []
+  private map: L.Map
+  private group: L.FeatureGroup
   private opts: PoiLayerOptions
-  private entries = new Map<string, MarkerEntry>()
-  private currentZoom = 12
+  private entries: PoiEntry[] = []
+  private entryByMarker = new WeakMap<L.Layer, PoiEntry>()
   private renderer: L.Canvas
-  /** Read-only counter: incremented each time markers are (re)built. For tests. */
+  /** Read-only counter: incremented each time the POI set is (re)loaded. For tests. */
   rebuildCount = 0
 
   constructor(map: L.Map, opts: Partial<PoiLayerOptions> = {}) {
+    this.map = map
     this.opts = { ...DEFAULT_POI_LAYER_OPTS, ...opts }
     // Dedicated pane above grid polygons + canvas with extra click tolerance:
     // Canvas has no :after, so tolerance is how a marker gets a bigger hit area.
     const pane = map.getPane(POI_PANE) ?? map.createPane(POI_PANE)
     pane.style.zIndex = '450'
     this.renderer = L.canvas({ pane: POI_PANE, tolerance: hitTolerance() })
-    this.group = L.layerGroup()
+    this.group = L.featureGroup()
     this.group.addTo(map)
-    this.currentZoom = map.getZoom()
+    this.group.on('click', this.handleClick)
 
-    map.on('zoomend', () => {
-      this.currentZoom = map.getZoom()
-      this.refreshVisibility()
-    })
+    map.on('zoomend', this.handleViewChange)
+    map.on('moveend', this.handleViewChange)
   }
 
   setPois(pois: ParsedPoi[]): void {
-    this.pois = pois
-    this.rebuild()
-  }
-
-  bringToFront(): void {
-    // POI markers live in their own pane (above grid polygons); nothing to reorder.
+    this.rebuildCount++
+    this.group.clearLayers()
+    this.entries = pois.map((poi) => ({ poi, kind: poiKind(poi), visible: false, marker: null }))
+    this.refresh()
   }
 
   setOptions(opts: Partial<PoiLayerOptions>): void {
     this.opts = { ...this.opts, ...opts }
-    this.refreshVisibility()
+    this.refresh()
   }
 
-  private rebuild(): void {
-    this.rebuildCount++
-    this.group.clearLayers()
-    this.entries.clear()
-
-    for (const poi of this.pois) {
-      const kind = poiKind(poi)
-      const visible = kindForZoom(kind, this.currentZoom, this.opts)
-      const marker = L.circleMarker([poi.lat, poi.lng], {
-        radius: KIND_RADIUS[kind],
-        color: '#ffffff',
-        weight: 2,
-        fillColor: POI_COLORS[kind],
-        fillOpacity: 1,
-        opacity: 1,
-        // Keep a marker click from also reaching the map (cell selection, range center).
-        bubblingMouseEvents: false,
-        renderer: this.renderer
-      })
-
-      marker.bindPopup(
-        () => {
-          const el = buildPoiPopupContent(poi, kind, {
-            showImages: this.opts.showImages,
-            onResize: () => {
-              const popup = marker.getPopup()
-              if (popup) popup.update()
-            }
-          })
-          return el
-        },
-        { maxWidth: Math.min(280, (typeof window !== 'undefined' ? window.innerWidth : 360) - 72) }
-      )
-
-      this.entries.set(poi.id, { poi, kind, marker, visible })
-      if (visible) this.group.addLayer(marker)
-    }
+  private handleViewChange = (): void => {
+    this.refresh()
   }
 
-  private refreshVisibility(): void {
-    for (const entry of this.entries.values()) {
-      const visible = kindForZoom(entry.kind, this.currentZoom, this.opts)
-      if (visible === entry.visible) continue
-      entry.visible = visible
-      // Hidden markers are removed (an invisible canvas marker still catches clicks).
-      if (visible) this.group.addLayer(entry.marker)
-      else this.group.removeLayer(entry.marker)
+  private createMarker(entry: PoiEntry): L.CircleMarker {
+    const marker = L.circleMarker([entry.poi.lat, entry.poi.lng], {
+      radius: KIND_RADIUS[entry.kind],
+      color: '#ffffff',
+      weight: 2,
+      fillColor: POI_COLORS[entry.kind],
+      fillOpacity: 1,
+      opacity: 1,
+      // Keep a marker click from also reaching the map (cell selection, range center).
+      bubblingMouseEvents: false,
+      renderer: this.renderer
+    })
+    this.entryByMarker.set(marker, entry)
+    return marker
+  }
+
+  private handleClick = (e: L.LeafletEvent): void => {
+    const source = (e as L.LeafletEvent & { layer?: L.Layer }).layer ?? e.propagatedFrom
+    const entry = source ? this.entryByMarker.get(source as L.Layer) : undefined
+    if (!entry) return
+    const popup = L.popup({
+      maxWidth: Math.min(280, (typeof window !== 'undefined' ? window.innerWidth : 360) - 72)
+    })
+    const content = buildPoiPopupContent(entry.poi, entry.kind, {
+      showImages: this.opts.showImages,
+      onResize: () => popup.update()
+    })
+    popup.setLatLng([entry.poi.lat, entry.poi.lng]).setContent(content).openOn(this.map)
+  }
+
+  /** Reconciles markers with the current zoom, filters and viewport; only the delta is touched. */
+  private refresh(): void {
+    const zoom = this.map.getZoom()
+    const b = this.map.getBounds().pad(VIEWPORT_PAD)
+    const south = b.getSouth()
+    const north = b.getNorth()
+    const west = b.getWest()
+    const east = b.getEast()
+
+    for (const entry of this.entries) {
+      const { lat, lng } = entry.poi
+      const want =
+        kindForZoom(entry.kind, zoom, this.opts) &&
+        lat >= south &&
+        lat <= north &&
+        lng >= west &&
+        lng <= east
+      if (want === entry.visible) continue
+      entry.visible = want
+      if (want) {
+        entry.marker ??= this.createMarker(entry)
+        this.group.addLayer(entry.marker)
+      } else if (entry.marker) {
+        // Hidden markers are removed (an invisible canvas marker still catches clicks).
+        this.group.removeLayer(entry.marker)
+        this.entryByMarker.delete(entry.marker)
+        entry.marker = null
+      }
     }
   }
 
   destroy(): void {
+    this.map.off('zoomend', this.handleViewChange)
+    this.map.off('moveend', this.handleViewChange)
+    this.group.off('click', this.handleClick)
     this.group.remove()
     this.renderer.remove()
-    this.entries.clear()
-    this.pois = []
+    this.entries = []
   }
 }

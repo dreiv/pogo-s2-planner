@@ -5,7 +5,13 @@ import { ref } from 'vue'
 import { useMarksStore } from '../stores/marks'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
-import { buildBackup, parseBackup, type ExportedMark, type ExportedSettings } from '../core/backup'
+import {
+  buildBackup,
+  parseBackup,
+  sanitizeDataset,
+  type ExportedMark,
+  type ExportedSettings
+} from '../core/backup'
 import type { CellMark } from '../data/db'
 
 const marks = useMarksStore()
@@ -74,50 +80,63 @@ async function importFromInput(e: Event): Promise<void> {
   const file = input.files?.[0]
   if (!file) return
 
-  const text = await file.text()
-  let raw: unknown
   try {
-    raw = JSON.parse(text)
-  } catch {
-    error.value = 'Invalid JSON — file could not be read.'
+    const text = await file.text()
+    let raw: unknown
+    try {
+      raw = JSON.parse(text)
+    } catch {
+      error.value = 'Invalid JSON — file could not be read.'
+      message.value = ''
+      return
+    }
+
+    const result = parseBackup(raw)
+    if (!result.ok) {
+      error.value = result.error ?? 'Import failed.'
+      message.value = ''
+      return
+    }
+
+    // A full backup replaces the dataset: validate it and confirm before touching anything.
+    const restored = result.dataset ? sanitizeDataset(result.dataset) : null
+    if (restored && (dataset.pois.length > 0 || dataset.cells.length > 0)) {
+      const ok = confirm(
+        `Replace the ${dataset.pois.length} POIs and ${dataset.cells.length} cells currently in this ` +
+          `browser with ${restored.pois.length} POIs and ${restored.cells.length} cells from the backup?`
+      )
+      if (!ok) return
+    }
+
+    await marks.bulkSet(
+      result.marks.map((m) => ({
+        token17: m.token17,
+        status: m.status,
+        note: m.note,
+        updatedAt: m.updatedAt
+      }))
+    )
+    settings.replaceAll(result.settings)
+
+    let datasetText = ''
+    if (restored) {
+      await dataset.replaceAll(restored.pois, restored.cells, 'backup restore')
+      const dropped = restored.droppedPois + restored.droppedCells
+      datasetText =
+        `, dataset restored (${restored.pois.length} POIs, ${restored.cells.length} cells` +
+        (dropped > 0 ? `, ${dropped} invalid entr${dropped === 1 ? 'y' : 'ies'} skipped` : '') +
+        ')'
+    }
+
+    message.value = `Imported: ${result.marks.length} mark(s), settings restored${datasetText}.`
+    error.value = ''
+  } catch (err) {
+    console.error('Backup import failed:', err)
+    error.value = `Import failed: ${err instanceof Error ? err.message : String(err)}`
     message.value = ''
-    return
+  } finally {
+    input.value = ''
   }
-
-  const result = parseBackup(raw)
-  if (!result.ok) {
-    error.value = result.error ?? 'Import failed.'
-    message.value = ''
-    return
-  }
-
-  await marks.bulkSet(
-    result.marks.map((m) => ({
-      token17: m.token17,
-      status: m.status,
-      note: m.note,
-      updatedAt: m.updatedAt
-    }))
-  )
-
-  const s = result.settings
-  settings.setCenter(s.center)
-  settings.setZoom(s.zoom)
-  settings.showS14 = s.showS14
-  settings.showS17 = s.showS17
-  settings.s14MinZoom = s.s14MinZoom
-  settings.s17MinZoom = s.s17MinZoom
-  settings.showPois = s.showPois
-  settings.showOtherPois = s.showOtherPois
-  settings.stopGymOnly = s.stopGymOnly
-  settings.showRange = s.showRange
-  settings.setRangeRadius(s.rangeRadius)
-  settings.setRangeCenter(s.rangeCenter)
-
-  message.value = `Imported: ${result.marks.length} mark(s), settings restored.`
-  error.value = ''
-
-  input.value = ''
 }
 </script>
 
@@ -141,7 +160,7 @@ async function importFromInput(e: Event): Promise<void> {
 
     <p class="backup-note">
       The first export has no Wayfarer data. The second one includes your Wayfarer (Niantic) data, which is personal.
-      Keep it out of version control.
+      Keep it out of version control. Importing a file that contains Wayfarer data replaces the data in this browser.
     </p>
   </CollapsibleSection>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import CollapsibleSection from './CollapsibleSection.vue'
 import InfoTip from './InfoTip.vue'
 import { useDatasetStore, type ImportSummary } from '../stores/dataset'
@@ -69,6 +69,12 @@ async function handlePaste(): Promise<void> {
     importing.value = false
   }
 }
+
+const MAX_SHOWN_WARNINGS = 50
+const shownWarnings = computed(() => lastSummary.value?.warnings.slice(0, MAX_SHOWN_WARNINGS) ?? [])
+const hiddenWarnings = computed(() =>
+  Math.max(0, (lastSummary.value?.warnings.length ?? 0) - MAX_SHOWN_WARNINGS)
+)
 
 function formatTime(ts: number): string {
   return Number.isFinite(ts) && ts > 0 ? new Date(ts).toLocaleString() : 'unknown time'
@@ -149,6 +155,17 @@ function formatTime(ts: number): string {
         <dt>Warnings</dt>
         <dd>{{ lastSummary.warningCount }}</dd>
       </dl>
+      <p v-if="lastSummary.nonS14Cells > 0" class="level-warning" role="alert">
+        {{ lastSummary.nonS14Cells }} cell(s) in this file are not S14. This planner colors S17 cells
+        only inside S14 cells, so that area will show no colors. Export the area from Wayfarer as S14 cells.
+      </p>
+      <details v-if="lastSummary.warnings.length > 0" class="warning-list">
+        <summary>Show {{ lastSummary.warnings.length }} warning(s)</summary>
+        <ul>
+          <li v-for="(w, i) in shownWarnings" :key="i">{{ w }}</li>
+          <li v-if="hiddenWarnings > 0">…and {{ hiddenWarnings }} more.</li>
+        </ul>
+      </details>
     </div>
 
     <div v-if="dataset.imports.length > 0" class="imports-list">
@@ -185,6 +202,35 @@ function formatTime(ts: number): string {
 .how-to ol {
   margin: 6px 0 0;
   padding-left: 20px;
+  line-height: 1.4;
+}
+
+
+.level-warning {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border: 1px solid var(--accent-amber);
+  border-radius: 4px;
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
+  line-height: 1.4;
+}
+
+.warning-list {
+  margin-top: 8px;
+}
+
+.warning-list summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.warning-list ul {
+  max-height: 160px;
+  margin: 4px 0 0;
+  padding-left: 18px;
+  overflow-y: auto;
+  font-size: 12px;
   line-height: 1.4;
 }
 

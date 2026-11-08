@@ -1,3 +1,6 @@
+import { defaultSettings, validateSettings, type SettingsData } from './settings'
+import type { ParsedCell, ParsedPoi } from './wayfarer/parse'
+
 export const SCHEMA_VERSION = 1
 
 export type MarkStatus = 'planificat' | 'propus' | 'in-review' | 'respins' | 'aprobat'
@@ -9,21 +12,7 @@ export interface ExportedMark {
   updatedAt: number
 }
 
-export interface ExportedSettings {
-  center: [number, number]
-  zoom: number
-  showS14: boolean
-  showS17: boolean
-  s14MinZoom: number
-  s17MinZoom: number
-  showPois: boolean
-  showOtherPois: boolean
-  stopGymOnly: boolean
-  showRange: boolean
-  rangeRadius: number
-  rangeCenter: [number, number] | null
-  showPoiImages: boolean
-}
+export type ExportedSettings = SettingsData
 
 export interface ExportedDataset {
   pois: unknown[]
@@ -103,58 +92,6 @@ export function parseBackup(raw: unknown): ImportResult {
   return { ok: true, marks, settings, dataset }
 }
 
-function defaultSettings(): ExportedSettings {
-  return {
-    center: [45.7, 21.3],
-    zoom: 13,
-    showS14: false,
-    showS17: false,
-    s14MinZoom: 12,
-    s17MinZoom: 16,
-    showPois: true,
-    showOtherPois: true,
-    stopGymOnly: false,
-    showRange: false,
-    rangeRadius: 80,
-    rangeCenter: null,
-    showPoiImages: true
-  }
-}
-
-function validateSettings(raw: unknown): ExportedSettings {
-  const def = defaultSettings()
-  if (typeof raw !== 'object' || raw === null) return def
-  const s = raw as Record<string, unknown>
-
-  return {
-    center:
-      Array.isArray(s.center) &&
-      s.center.length === 2 &&
-      typeof s.center[0] === 'number' &&
-      typeof s.center[1] === 'number'
-        ? [s.center[0] as number, s.center[1] as number]
-        : def.center,
-    zoom: typeof s.zoom === 'number' ? s.zoom : def.zoom,
-    showS14: typeof s.showS14 === 'boolean' ? s.showS14 : def.showS14,
-    showS17: typeof s.showS17 === 'boolean' ? s.showS17 : def.showS17,
-    s14MinZoom: typeof s.s14MinZoom === 'number' ? s.s14MinZoom : def.s14MinZoom,
-    s17MinZoom: typeof s.s17MinZoom === 'number' ? s.s17MinZoom : def.s17MinZoom,
-    showPois: typeof s.showPois === 'boolean' ? s.showPois : def.showPois,
-    showOtherPois: typeof s.showOtherPois === 'boolean' ? s.showOtherPois : def.showOtherPois,
-    stopGymOnly: typeof s.stopGymOnly === 'boolean' ? s.stopGymOnly : def.stopGymOnly,
-    showRange: typeof s.showRange === 'boolean' ? s.showRange : def.showRange,
-    rangeRadius: typeof s.rangeRadius === 'number' ? s.rangeRadius : def.rangeRadius,
-    rangeCenter:
-      Array.isArray(s.rangeCenter) &&
-      s.rangeCenter.length === 2 &&
-      typeof s.rangeCenter[0] === 'number' &&
-      typeof s.rangeCenter[1] === 'number'
-        ? [s.rangeCenter[0] as number, s.rangeCenter[1] as number]
-        : null,
-    showPoiImages: typeof s.showPoiImages === 'boolean' ? s.showPoiImages : def.showPoiImages
-  }
-}
-
 export function buildBackup(
   marks: ExportedMark[],
   settings: ExportedSettings,
@@ -170,4 +107,90 @@ export function buildBackup(
     file.dataset = includeDataset
   }
   return file
+}
+
+export interface SanitizedDataset {
+  pois: ParsedPoi[]
+  cells: ParsedCell[]
+  droppedPois: number
+  droppedCells: number
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+function text(v: unknown): string {
+  return typeof v === 'string' ? v : ''
+}
+
+function finite(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+function sanitizePoi(raw: unknown): ParsedPoi | null {
+  if (!isRecord(raw)) return null
+  const id = text(raw.id).trim()
+  const lat = finite(raw.lat)
+  const lng = finite(raw.lng)
+  if (!id || lat === null || lng === null) return null
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  const game: ParsedPoi['game'] = []
+  if (Array.isArray(raw.game)) {
+    for (const g of raw.game) {
+      if (!isRecord(g)) continue
+      game.push({ entity: text(g.entity), status: text(g.status), brand: text(g.brand) })
+    }
+  }
+  return {
+    id,
+    lat,
+    lng,
+    title: text(raw.title),
+    description: text(raw.description),
+    address: text(raw.address),
+    imageUrl: text(raw.imageUrl),
+    communityContributed: raw.communityContributed === true,
+    game,
+    cellToken: text(raw.cellToken)
+  }
+}
+
+const TOKEN_RE = /^[0-9a-f]{1,16}$/
+
+function sanitizeCell(raw: unknown): ParsedCell | null {
+  if (!isRecord(raw)) return null
+  const token = text(raw.token).trim().toLowerCase()
+  if (!TOKEN_RE.test(token)) return null
+  const count = finite(raw.count)
+  return {
+    token,
+    count: count !== null && count >= 0 ? count : 0,
+    truncated: raw.truncated === true,
+    generatedTimestamp: finite(raw.generatedTimestamp),
+    snapshot: finite(raw.snapshot),
+    level: finite(raw.level)
+  }
+}
+
+/**
+ * Backup files are user-supplied: validate every POI/cell before it replaces the dataset.
+ * Invalid entries are dropped and counted; duplicates (same id / token) keep the last one.
+ */
+export function sanitizeDataset(raw: ExportedDataset): SanitizedDataset {
+  const pois = new Map<string, ParsedPoi>()
+  const cells = new Map<string, ParsedCell>()
+  let droppedPois = 0
+  let droppedCells = 0
+  for (const p of raw.pois) {
+    const poi = sanitizePoi(p)
+    if (poi) pois.set(poi.id, poi)
+    else droppedPois++
+  }
+  for (const c of raw.cells) {
+    const cell = sanitizeCell(c)
+    if (cell) cells.set(cell.token, cell)
+    else droppedCells++
+  }
+  return { pois: [...pois.values()], cells: [...cells.values()], droppedPois, droppedCells }
 }

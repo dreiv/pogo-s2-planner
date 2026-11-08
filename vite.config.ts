@@ -34,6 +34,8 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.js', '**/*.css', '**/*.html'],
+        // The lazy initial-data chunk (~1.5 MB) must stay precached so first load works offline.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/tiles\//, /^\/data\//],
         runtimeCaching: [

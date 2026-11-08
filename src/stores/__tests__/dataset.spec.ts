@@ -1,9 +1,16 @@
 import 'fake-indexeddb/auto'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { isReactive } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { useDatasetStore } from '../dataset'
 import { db } from '../../data/db'
+import type { ExportedDataset } from '../../core/backup'
+
+// The real seed is a ~1.5 MB bundled file: tests control it through this mock instead.
+const seed = vi.hoisted(() => ({ dataset: null as ExportedDataset | null }))
+vi.mock('../../data/initialData', () => ({
+  loadInitialDataset: async () => seed.dataset
+}))
 
 // Minimal Wayfarer JSON fixture (synthetic)
 const sampleJson = {
@@ -42,6 +49,7 @@ const sampleJson = {
 }
 
 beforeEach(async () => {
+  seed.dataset = null
   setActivePinia(createPinia())
   await db.pois.clear()
   await db.cells.clear()
@@ -112,6 +120,132 @@ describe('dataset store', () => {
 
     const dbPois = await db.pois.toArray()
     expect(dbPois).toEqual([])
+  })
+
+  async function makeSeed(): Promise<ExportedDataset> {
+    const scratch = useDatasetStore()
+    await scratch.importDocuments([{ name: 'test.json', json: sampleJson }])
+    const data = { pois: [...scratch.pois], cells: [...scratch.cells] }
+    await scratch.clearAll()
+    setActivePinia(createPinia())
+    return data
+  }
+
+  it('does not seed anything when no initial dataset is bundled', async () => {
+    const store = useDatasetStore()
+    await store.load()
+    expect(store.loaded).toBe(true)
+    expect(store.pois).toEqual([])
+    expect(store.loadError).toBeNull()
+    expect(await db.pois.count()).toBe(0)
+  })
+
+  it('pre-populates an empty database with the initial dataset on load', async () => {
+    seed.dataset = await makeSeed()
+    const store = useDatasetStore()
+    await store.load()
+    expect(store.pois).toHaveLength(2)
+    expect(store.cells.length).toBeGreaterThan(0)
+    expect(store.imports[0]?.fileName).toBe('initial data')
+    expect(await db.pois.count()).toBe(2)
+    expect(store.storageError).toBeNull()
+  })
+
+  it('brings the initial data back on reload after "Delete all"', async () => {
+    seed.dataset = await makeSeed()
+    const store = useDatasetStore()
+    await store.load()
+    await store.clearAll()
+    expect(store.pois).toEqual([])
+
+    setActivePinia(createPinia())
+    const fresh = useDatasetStore()
+    await fresh.load()
+    expect(fresh.pois).toHaveLength(2)
+  })
+
+  it('never seeds over data that is already stored', async () => {
+    const store = useDatasetStore()
+    await store.importDocuments([{ name: 'mine.json', json: sampleJson }])
+    seed.dataset = {
+      pois: [{ ...store.pois[0]!, id: 'seed-only' }],
+      cells: [...store.cells]
+    }
+
+    setActivePinia(createPinia())
+    const fresh = useDatasetStore()
+    await fresh.load()
+    expect(fresh.pois.map((p) => p.id)).not.toContain('seed-only')
+    expect(fresh.imports[0]?.fileName).toBe('mine.json')
+  })
+
+  it('shows the seed from memory only when the database cannot be read', async () => {
+    seed.dataset = await makeSeed()
+    const store = useDatasetStore()
+    const original = db.pois.toArray
+    db.pois.toArray = () => Promise.reject(new Error('IndexedDB blocked'))
+    try {
+      await store.load()
+    } finally {
+      db.pois.toArray = original
+    }
+    expect(store.loadError).toContain('IndexedDB blocked')
+    expect(store.pois).toHaveLength(2)
+    expect(await db.pois.count()).toBe(0)
+  })
+
+  it('replaceAll swaps the dataset, persists it and resets import history', async () => {
+    const store = useDatasetStore()
+    await store.importDocuments([{ name: 'test.json', json: sampleJson }])
+    const poi = { ...store.pois[0]!, id: 'restored-1' }
+    const cell = { ...store.cells[0]!, token: 'abcd01' }
+
+    await store.replaceAll([poi], [cell], 'backup restore')
+
+    expect(store.pois.map((p) => p.id)).toEqual(['restored-1'])
+    expect(store.cells.map((c) => c.token)).toEqual(['abcd01'])
+    expect(store.imports).toHaveLength(1)
+    expect((await db.pois.toArray()).map((p) => p.id)).toEqual(['restored-1'])
+    expect((await db.imports.toArray()).map((i) => i.fileName)).toEqual(['backup restore'])
+  })
+
+  it('reports a failed write in storageError but keeps the data in memory', async () => {
+    const store = useDatasetStore()
+    const original = db.transaction.bind(db)
+    ;(db as unknown as { transaction: () => Promise<never> }).transaction = () =>
+      Promise.reject(new Error('quota exceeded'))
+    try {
+      const summary = await store.importDocuments([{ name: 'test.json', json: sampleJson }])
+      expect(summary.poisAdded).toBe(2)
+      expect(store.pois).toHaveLength(2)
+      expect(store.storageError).toContain('quota exceeded')
+    } finally {
+      ;(db as unknown as { transaction: typeof original }).transaction = original
+    }
+  })
+
+  it('reports an unreadable database in loadError and still finishes loading', async () => {
+    const store = useDatasetStore()
+    const spy = db.pois.toArray
+    db.pois.toArray = () => Promise.reject(new Error('IndexedDB blocked'))
+    try {
+      await store.load()
+      expect(store.loaded).toBe(true)
+      expect(store.loadError).toContain('IndexedDB blocked')
+      expect(store.pois).toEqual([])
+    } finally {
+      db.pois.toArray = spy
+    }
+  })
+
+  it('shares one POI index / cell-state resolver per revision', async () => {
+    const store = useDatasetStore()
+    await store.importDocuments([{ name: 'test.json', json: sampleJson }])
+    const first = store.poiIndex
+    expect(store.poiIndex).toBe(first)
+    expect(store.cellStateResolver).toBe(store.cellStateResolver)
+    await store.importDocuments([{ name: 'again.json', json: sampleJson }])
+    expect(store.poiIndex).not.toBe(first)
   })
 
   it('load reads from IndexedDB', async () => {

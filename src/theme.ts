@@ -14,6 +14,14 @@ export const CELL_STATE_COLORS = {
   unknown: 'transparent'
 } as const
 
+/** Fill opacity of S17 cells: used by the map and the legend so they cannot drift apart. */
+export const CELL_FILL_OPACITY = {
+  occupied: 0.25,
+  free: 0,
+  'free-uncertain': 0.2,
+  unknown: 0
+} as const
+
 export const MARK_STATUS_COLORS = {
   planificat: '#2563eb',
   propus: '#7c3aed',

@@ -1,68 +1,48 @@
 import { defineStore } from 'pinia'
-import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../config'
+import {
+  clampRangeRadius,
+  clampZoom,
+  parseStoredSettings,
+  serializeSettings,
+  validateSettings,
+  type SettingsData
+} from '../core/settings'
 
 const STORAGE_KEY = 'pogo-s2-planner:settings'
 
-export interface SettingsState {
-  center: [number, number]
-  zoom: number
-  showS14: boolean
-  showS17: boolean
-  s14MinZoom: number
-  s17MinZoom: number
-  showPois: boolean
-  showOtherPois: boolean
-  stopGymOnly: boolean
-  showRange: boolean
-  rangeRadius: number
-  rangeCenter: [number, number] | null
-  showPoiImages: boolean
-}
+export type SettingsState = SettingsData
 
-function loadFromStorage(): Partial<SettingsState> {
+function loadFromStorage(): SettingsData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as Partial<SettingsState>
+    return parseStoredSettings(localStorage.getItem(STORAGE_KEY))
   } catch {
-    // ignore parse errors
+    // localStorage unavailable (privacy mode, blocked storage): run with defaults.
+    return parseStoredSettings(null)
   }
-  return {}
 }
 
-function persist(state: SettingsState): void {
+function persist(state: SettingsData): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(STORAGE_KEY, serializeSettings(state))
   } catch {
     // storage full or unavailable
   }
 }
 
 export const useSettingsStore = defineStore('settings', {
-  state: (): SettingsState => {
-    const saved = loadFromStorage()
-    return {
-      center: saved.center ?? DEFAULT_CENTER,
-      zoom: saved.zoom ?? DEFAULT_ZOOM,
-      showS14: saved.showS14 ?? false,
-      showS17: saved.showS17 ?? false,
-      s14MinZoom: saved.s14MinZoom ?? 13,
-      s17MinZoom: saved.s17MinZoom ?? 16,
-      showPois: saved.showPois ?? true,
-      showOtherPois: saved.showOtherPois ?? true,
-      stopGymOnly: saved.stopGymOnly ?? false,
-      showRange: saved.showRange ?? false,
-      rangeRadius: saved.rangeRadius ?? 80,
-      rangeCenter: saved.rangeCenter ?? null,
-      showPoiImages: saved.showPoiImages ?? true
-    }
-  },
+  state: (): SettingsState => loadFromStorage(),
   actions: {
+    /** Replaces every setting at once (backup restore). Input is validated and clamped. */
+    replaceAll(next: unknown): void {
+      this.$patch(validateSettings(next))
+      persist(this.$state)
+    },
     setCenter(center: [number, number]): void {
       this.center = center
       persist(this.$state)
     },
     setZoom(zoom: number): void {
-      this.zoom = zoom
+      this.zoom = clampZoom(zoom, this.zoom)
       persist(this.$state)
     },
     toggleS14(): void {
@@ -74,11 +54,11 @@ export const useSettingsStore = defineStore('settings', {
       persist(this.$state)
     },
     setS14MinZoom(zoom: number): void {
-      this.s14MinZoom = zoom
+      this.s14MinZoom = clampZoom(zoom, this.s14MinZoom)
       persist(this.$state)
     },
     setS17MinZoom(zoom: number): void {
-      this.s17MinZoom = zoom
+      this.s17MinZoom = clampZoom(zoom, this.s17MinZoom)
       persist(this.$state)
     },
     toggleShowPois(): void {
@@ -98,7 +78,7 @@ export const useSettingsStore = defineStore('settings', {
       persist(this.$state)
     },
     setRangeRadius(radius: number): void {
-      this.rangeRadius = Math.max(20, Math.min(500, radius))
+      this.rangeRadius = clampRangeRadius(radius)
       persist(this.$state)
     },
     setRangeCenter(center: [number, number] | null): void {

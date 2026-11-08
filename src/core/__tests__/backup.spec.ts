@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest'
 import {
   parseBackup,
   buildBackup,
+  sanitizeDataset,
   SCHEMA_VERSION,
   type BackupFile,
   type ExportedMark,
   type ExportedSettings,
   type MarkStatus
 } from '../backup'
+import { defaultSettings } from '../settings'
 
 function makeMark(
   token17: string,
@@ -226,5 +228,124 @@ describe('parseBackup', () => {
     const result = parseBackup(file)
     expect(result.ok).toBe(true)
     expect(result.settings.showPoiImages).toBe(true)
+  })
+})
+
+describe('sanitizeDataset', () => {
+  const goodPoi = {
+    id: 'p1',
+    lat: 45.7,
+    lng: 21.2,
+    title: 'Synthetic Stop A',
+    description: '',
+    address: '',
+    imageUrl: '',
+    communityContributed: false,
+    game: [{ entity: 'POKESTOP', status: 'ACTIVE', brand: 'HOLOHOLO' }],
+    cellToken: '47455d01'
+  }
+  const goodCell = {
+    token: '47455d01',
+    count: 3,
+    truncated: false,
+    generatedTimestamp: 1,
+    snapshot: null,
+    level: 14
+  }
+
+  it('keeps valid entries untouched', () => {
+    const r = sanitizeDataset({ pois: [goodPoi], cells: [goodCell] })
+    expect(r.pois).toEqual([goodPoi])
+    expect(r.cells).toEqual([goodCell])
+    expect(r.droppedPois).toBe(0)
+    expect(r.droppedCells).toBe(0)
+  })
+
+  it('drops POIs with a missing id or bad coordinates and counts them', () => {
+    const r = sanitizeDataset({
+      pois: [
+        goodPoi,
+        { ...goodPoi, id: '' },
+        { ...goodPoi, id: 'x', lat: 'nope' },
+        { ...goodPoi, id: 'y', lat: 123 },
+        { ...goodPoi, id: 'z', lng: NaN },
+        null,
+        'str'
+      ],
+      cells: []
+    })
+    expect(r.pois).toHaveLength(1)
+    expect(r.droppedPois).toBe(6)
+  })
+
+  it('drops cells whose token is not hex and keeps lowercase tokens', () => {
+    const r = sanitizeDataset({
+      pois: [],
+      cells: [goodCell, { ...goodCell, token: 'ZZ' }, { ...goodCell, token: '' }, { ...goodCell, token: '47455D02' }]
+    })
+    expect(r.cells.map((c) => c.token)).toEqual(['47455d01', '47455d02'])
+    expect(r.droppedCells).toBe(2)
+  })
+
+  it('fills missing optional fields with safe defaults', () => {
+    const r = sanitizeDataset({ pois: [{ id: 'a', lat: 1, lng: 2 }], cells: [{ token: 'ab' }] })
+    expect(r.pois[0]).toEqual({
+      id: 'a',
+      lat: 1,
+      lng: 2,
+      title: '',
+      description: '',
+      address: '',
+      imageUrl: '',
+      communityContributed: false,
+      game: [],
+      cellToken: ''
+    })
+    expect(r.cells[0]).toEqual({
+      token: 'ab',
+      count: 0,
+      truncated: false,
+      generatedTimestamp: null,
+      snapshot: null,
+      level: null
+    })
+  })
+
+  it('deduplicates by id/token, keeping the last', () => {
+    const r = sanitizeDataset({
+      pois: [goodPoi, { ...goodPoi, title: 'second' }],
+      cells: [goodCell, { ...goodCell, count: 9 }]
+    })
+    expect(r.pois).toHaveLength(1)
+    expect(r.pois[0]!.title).toBe('second')
+    expect(r.cells[0]!.count).toBe(9)
+  })
+
+  it('malformed game entries are skipped, not fatal', () => {
+    const r = sanitizeDataset({ pois: [{ ...goodPoi, game: [null, 3, { entity: 'GYM' }] }], cells: [] })
+    expect(r.pois[0]!.game).toEqual([{ entity: 'GYM', status: '', brand: '' }])
+  })
+})
+
+describe('parseBackup settings validation', () => {
+  it('clamps absurd numbers from a hand-edited backup', () => {
+    const file = {
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 0,
+      marks: [],
+      settings: { zoom: 500, rangeRadius: -3, s14MinZoom: 0, center: [999, 0] }
+    }
+    const r = parseBackup(file)
+    expect(r.ok).toBe(true)
+    expect(r.settings.zoom).toBe(19)
+    expect(r.settings.rangeRadius).toBe(20)
+    expect(r.settings.s14MinZoom).toBe(1)
+    expect(r.settings.center).toEqual([45.7649, 21.2531])
+  })
+
+  it('defaults agree with the settings store defaults (s14MinZoom 13)', () => {
+    const r = parseBackup({ schemaVersion: SCHEMA_VERSION, exportedAt: 0, marks: [], settings: {} })
+    expect(r.settings).toEqual(defaultSettings())
+    expect(r.settings.s14MinZoom).toBe(13)
   })
 })

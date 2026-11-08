@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CollapsibleSection from './CollapsibleSection.vue'
-import { CELL_STATE_COLORS, MARK_STATUS_COLORS, withAlpha } from '../theme'
+import { CELL_FILL_OPACITY, CELL_STATE_COLORS, MARK_STATUS_COLORS, withAlpha } from '../theme'
 import { MARK_OUTLINE_WEIGHT, MARK_STATUS_DASH, MARK_STATUS_LABELS, MARK_STATUS_ORDER } from '../markStyle'
 
 interface LegendItem {
@@ -13,12 +13,12 @@ interface LegendItem {
 const s17Legend: LegendItem[] = [
   {
     label: 'Occupied (active stop or gym)',
-    background: withAlpha(CELL_STATE_COLORS.occupied, 0.35),
+    background: withAlpha(CELL_STATE_COLORS.occupied, CELL_FILL_OPACITY.occupied),
     border: CELL_STATE_COLORS.occupied
   },
   {
     label: 'Free, but incomplete data (S14 cell may be cut off)',
-    background: withAlpha(CELL_STATE_COLORS['free-uncertain'], 0.3),
+    background: withAlpha(CELL_STATE_COLORS['free-uncertain'], CELL_FILL_OPACITY['free-uncertain']),
     border: CELL_STATE_COLORS['free-uncertain']
   }
 ]

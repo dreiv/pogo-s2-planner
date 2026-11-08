@@ -17,6 +17,8 @@ Pokéstop/Gym. Are și un instrument de range (80–500 m).
 - Nu comite date reale Wayfarer: stau în `local-data/` (gitignored). `fixtures/` conține
   doar date sintetice; sunt permise titluri/ID-uri de poză EVIDENT sintetice
   (ex. "Synthetic Stop A", `SYNTHETICIMAGEID…`); niciodată date reale.
+  EXCEPȚIE decisă de proprietar (D-audit-1): `src/data/seed/initial-backup.json` e datasetul
+  inițial livrat cu aplicația (pre-populează harta pentru vizitatori). Nu se mai adaugă alte date reale.
 - Fără scraping/automatizare Wayfarer. Importul e manual (fișier sau paste).
 - TypeScript strict, fără `any` nejustificat.
 - Nu depăși scopul fazei curente. Dacă planul nu se potrivește cu realitatea (API de
