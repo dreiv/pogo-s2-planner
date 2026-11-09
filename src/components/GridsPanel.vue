@@ -19,6 +19,13 @@ const settings = useSettingsStore()
       @toggle="settings.toggleS14()"
     />
     <ToggleRow
+      indent
+      :checked="settings.showGymHints"
+      label="Hint when a gym is about to appear"
+      term="gymHint"
+      @toggle="settings.toggleGymHints()"
+    />
+    <ToggleRow
       :checked="settings.showS17"
       label="Stop-slot cells (S17, ~70 m)"
       term="s17"

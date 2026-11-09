@@ -26,6 +26,7 @@ function makeSettings(): ExportedSettings {
     zoom: 14,
     showS14: true,
     showS17: false,
+    showGymHints: true,
     s14MinZoom: 12,
     s17MinZoom: 16,
     showPois: true,

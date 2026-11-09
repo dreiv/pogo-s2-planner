@@ -3,6 +3,8 @@ import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { createMap } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
 import { S2GridLayer, type CellStyleFn } from '../map/S2GridLayer'
+import { GymHintLayer } from '../map/GymHintLayer'
+import { gymHintText } from '../core/gymHints'
 import { PoiLayer } from '../map/PoiLayer'
 import { RangeLayer } from '../map/RangeLayer'
 import { useSettingsStore } from '../stores/settings'
@@ -27,6 +29,7 @@ let cleanupLocate: (() => void) | null = null
 let s14Layer: S2GridLayer | null = null
 let s17Layer: S2GridLayer | null = null
 let poiLayer: PoiLayer | null = null
+let gymHintLayer: GymHintLayer | null = null
 let rangeLayer: RangeLayer | null = null
 let flushMoveEndRef: (() => void) | null = null
 
@@ -107,6 +110,13 @@ const emit = defineEmits<{
   cellSelected: [token: string]
 }>()
 
+/** Full sentence for the popup; null when hints are off or the cell is not close to a gym. */
+function gymHintFor(s14Token: string): string | null {
+  if (!settings.showGymHints) return null
+  const cell = dataset.gymHintByS14.get(s14Token)
+  return cell ? gymHintText(cell.hint) : null
+}
+
 function handleS17CellClick(token: string, lat: number, lng: number): void {
   if (!map) return
   const state = dataset.cellStateResolver(token)
@@ -121,6 +131,7 @@ function handleS17CellClick(token: string, lat: number, lng: number): void {
     s14PoiCount: s14Cell ? s14Cell.count : null,
     lat,
     lng,
+    gymHint: gymHintFor(s14),
     pois: cellPois.map((p) => ({ id: p.id, title: p.title }))
   })
 
@@ -175,6 +186,21 @@ function syncGridLayers(): void {
   } else if (!settings.showS17 && s17Layer) {
     s17Layer.destroy()
     s17Layer = null
+  }
+}
+
+function syncGymHintLayer(): void {
+  if (!map) return
+  // Independent of the S14 grid: the badges are useful (and must be findable) with the grid off.
+  const want = settings.showGymHints
+  if (want && !gymHintLayer) {
+    gymHintLayer = new GymHintLayer(map, { minZoom: settings.s14MinZoom })
+    gymHintLayer.setHints(dataset.gymHints)
+  } else if (!want && gymHintLayer) {
+    gymHintLayer.destroy()
+    gymHintLayer = null
+  } else if (gymHintLayer) {
+    gymHintLayer.setMinZoom(settings.s14MinZoom)
   }
 }
 
@@ -271,6 +297,7 @@ onMounted(() => {
 
   syncGridLayers()
   syncPoiLayer()
+  syncGymHintLayer()
   syncRangeLayer()
 })
 
@@ -282,6 +309,8 @@ watch(
     syncGridLayers()
   }
 )
+
+watch(() => [settings.showGymHints, settings.s14MinZoom] as const, syncGymHintLayer)
 
 watch(
   () => [settings.showPois, settings.showGyms, settings.showStops, settings.showOtherPois] as const,
@@ -304,6 +333,7 @@ watch(
   () => dataset.revision,
   () => {
     syncPoiLayer()
+    gymHintLayer?.setHints(dataset.gymHints)
     s14Layer?.setCellStyle(makeS14CellStyle())
     s17Layer?.setCellStyle(makeS17CellStyle())
   }
@@ -336,6 +366,10 @@ onBeforeUnmount(() => {
   if (flushMoveEndRef) flushMoveEndRef()
   if (cleanupLocate) cleanupLocate()
   destroyGridLayers()
+  if (gymHintLayer) {
+    gymHintLayer.destroy()
+    gymHintLayer = null
+  }
   if (poiLayer) {
     poiLayer.destroy()
     poiLayer = null

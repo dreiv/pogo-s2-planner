@@ -53,6 +53,10 @@ export const useSettingsStore = defineStore('settings', {
       this.showS14 = !this.showS14
       persist(this.$state)
     },
+    toggleGymHints(): void {
+      this.showGymHints = !this.showGymHints
+      persist(this.$state)
+    },
     toggleS17(): void {
       this.showS17 = !this.showS17
       persist(this.$state)

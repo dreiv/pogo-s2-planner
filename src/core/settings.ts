@@ -22,6 +22,8 @@ export interface SettingsData {
   zoom: number
   showS14: boolean
   showS17: boolean
+  /** "+2 → 2nd gym" badges on S14 cells that are close to their next gym. */
+  showGymHints: boolean
   s14MinZoom: number
   s17MinZoom: number
   showPois: boolean
@@ -47,6 +49,7 @@ export function defaultSettings(): SettingsData {
     zoom: DEFAULT_ZOOM,
     showS14: false,
     showS17: false,
+    showGymHints: true,
     s14MinZoom: 13,
     s17MinZoom: 16,
     showPois: true,
@@ -115,6 +118,7 @@ export function validateSettings(raw: unknown): SettingsData {
     zoom: clampedNumber(s.zoom, ZOOM_MIN, ZOOM_MAX, def.zoom),
     showS14: bool(s.showS14, def.showS14),
     showS17: bool(s.showS17, def.showS17),
+    showGymHints: bool(s.showGymHints, def.showGymHints),
     s14MinZoom: clampedNumber(s.s14MinZoom, ZOOM_MIN, ZOOM_MAX, def.s14MinZoom),
     s17MinZoom: clampedNumber(s.s17MinZoom, ZOOM_MIN, ZOOM_MAX, def.s17MinZoom),
     showPois: bool(s.showPois, def.showPois),

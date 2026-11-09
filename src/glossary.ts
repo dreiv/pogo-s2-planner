@@ -3,7 +3,9 @@ export interface GlossaryEntry {
   text: string
 }
 
-const tiers = '2 POIs → 1 gym, 6 POIs → 2 gyms, 20 POIs → 3 gyms'
+import { GYM_HINT_MAX_REMAINING, GYM_HINT_MIN_COUNT, GYM_TIERS } from './core/gymHints'
+
+const tiers = GYM_TIERS.map((n, i) => `${n} POIs → ${i + 1} gym${i === 0 ? '' : 's'}`).join(', ')
 
 export const TERMS = {
   s2: {
@@ -13,6 +15,10 @@ export const TERMS = {
   s14: {
     label: 'S14 cell (~0.6 km)',
     text: `A large cell that contains exactly 64 S17 cells. How many gyms it gets depends on how many POIs it holds (${tiers}). That is the community rule, not a guarantee.`
+  },
+  gymHint: {
+    label: 'Gym hint',
+    text: `A badge on an S14 cell that is close to its next gym (${tiers}). It shows once the cell has ${GYM_HINT_MIN_COUNT}+ stops and gyms and ${GYM_HINT_MAX_REMAINING} or fewer more would unlock the next gym: "+2 → 2nd gym" means two more stops. Only cells with imported data get one. It shows from zoom 13 up, with or without the S14 grid. It is a community rule of thumb, not a guarantee.`
   },
   s17: {
     label: 'S17 cell (~70 m)',

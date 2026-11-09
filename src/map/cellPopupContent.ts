@@ -12,6 +12,8 @@ export interface CellPopupData {
   /** Where the person clicked: shown on "No data" cells so they know which area to search. */
   lat?: number
   lng?: number
+  /** "This S14 cell has 5 stops and gyms. With 1 more stop..." (when a gym is about to appear). */
+  gymHint?: string | null
 }
 
 export const WAYFARER_URL = 'https://wayfarer.scopely.com/mapview?z=16'
@@ -88,6 +90,14 @@ export function buildCellPopupContent(data: CellPopupData): HTMLElement {
     why.textContent = cellStateExplanation(data.state, data.s14PoiCount)
     root.appendChild(why)
     if (data.state === 'unknown') root.appendChild(noDataAction(data.lat, data.lng))
+  }
+
+  if (data.gymHint) {
+    const hint = document.createElement('p')
+    hint.className = 'cell-popup-gym-hint'
+    hint.style.margin = '0 0 6px'
+    hint.textContent = data.gymHint
+    root.appendChild(hint)
   }
 
   // "POIs: 0" would read as "checked, nothing there" on a cell the app knows nothing about.

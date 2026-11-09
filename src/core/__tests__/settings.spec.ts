@@ -48,6 +48,12 @@ describe('validateSettings', () => {
     expect(s.showGyms).toBe(false)
   })
 
+  it('gym hints are on by default and a bad value falls back to it', () => {
+    expect(defaultSettings().showGymHints).toBe(true)
+    expect(validateSettings({ showGymHints: 'x' }).showGymHints).toBe(true)
+    expect(validateSettings({ showGymHints: false }).showGymHints).toBe(false)
+  })
+
   it('gyms, stops and non-game POIs are all shown by default', () => {
     const d = defaultSettings()
     expect([d.showGyms, d.showStops, d.showOtherPois]).toEqual([true, true, true])

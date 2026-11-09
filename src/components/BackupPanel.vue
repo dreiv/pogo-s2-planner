@@ -27,6 +27,7 @@ function collectSettings(): ExportedSettings {
     zoom: settings.zoom,
     showS14: settings.showS14,
     showS17: settings.showS17,
+    showGymHints: settings.showGymHints,
     s14MinZoom: settings.s14MinZoom,
     s17MinZoom: settings.s17MinZoom,
     showPois: settings.showPois,

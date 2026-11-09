@@ -6,7 +6,8 @@ import { mergeMany, type MergeStats } from '../core/wayfarer/merge'
 import { DEFAULT_CLASSIFY_OPTS, poiKind, type CellState } from '../core/classify'
 import { buildCoverage, createCellStateResolver } from '../core/cellState'
 import { buildPoiIndex, type PoiIndex } from '../core/poiIndex'
-import { parentToken } from '../core/s2'
+import { cellCenter, parentToken } from '../core/s2'
+import { computeGymHints, type GymHintCell } from '../core/gymHints'
 import { sanitizeDataset } from '../core/backup'
 import { loadInitialDataset } from '../data/initialData'
 
@@ -85,6 +86,16 @@ export const useDatasetStore = defineStore('dataset', {
     poiIndex(state): PoiIndex {
       void state.revision
       return markRaw(buildPoiIndex(state.pois))
+    },
+    /** S14 cells close to their next gym (shared by the map badges and the cell popup). */
+    gymHints(state): GymHintCell[] {
+      void state.revision
+      return markRaw(
+        computeGymHints(this.poiIndex.poisByS14, buildCoverage(state.cells), cellCenter)
+      )
+    },
+    gymHintByS14(): ReadonlyMap<string, GymHintCell> {
+      return markRaw(new Map(this.gymHints.map((h) => [h.token, h])))
     },
     /** Shared S17 state lookup used by the map and the side panel. */
     cellStateResolver(state): (token17: string) => CellState {

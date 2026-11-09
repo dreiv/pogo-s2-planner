@@ -41,6 +41,16 @@ vi.mock('../map/S2GridLayer', () => ({
   })
 }))
 
+vi.mock('../map/GymHintLayer', () => ({
+  GymHintLayer: vi.fn(function () {
+    return {
+      setHints: vi.fn(),
+      setMinZoom: vi.fn(),
+      destroy: () => layerCalls.push('gymhint:destroy')
+    }
+  })
+}))
+
 vi.mock('../map/RangeLayer', () => ({
   RangeLayer: vi.fn(function () {
     return {
@@ -98,6 +108,17 @@ describe('MapView', () => {
     expect(CELL_FILL_OPACITY.unknown).toBeGreaterThanOrEqual(0.3)
     settings.showCellUnknown = false
     expect(s14?.cellStyle?.('missing')).toBeNull()
+  })
+
+  it('gym hints are drawn without the S14 grid, and the toggle removes and restores them', async () => {
+    const settings = useSettingsStore()
+    expect(settings.showS14).toBe(false)
+    const wrapper = mount(MapView)
+    expect(layerCalls).not.toContain('gymhint:destroy')
+    settings.toggleGymHints()
+    await wrapper.vm.$nextTick()
+    expect(layerCalls).toContain('gymhint:destroy')
+    wrapper.unmount()
   })
 
   it('shows no grid hint until a layer reports one', () => {

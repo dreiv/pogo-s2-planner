@@ -75,6 +75,14 @@ describe('buildCellPopupContent', () => {
     expect(el.textContent).toContain('POIs: 0')
   })
 
+  it('adds the "gym about to appear" sentence only when there is one', () => {
+    const text = 'This S14 cell has 5 stops and gyms. With 1 more stop it would get its 2nd gym.'
+    const withHint = buildCellPopupContent({ ...base, state: 'free', gymHint: text, pois: [] })
+    expect(withHint.querySelector('.cell-popup-gym-hint')?.textContent).toBe(text)
+    const without = buildCellPopupContent({ ...base, state: 'free', gymHint: null, pois: [] })
+    expect(without.querySelector('.cell-popup-gym-hint')).toBeNull()
+  })
+
   it('still renders for a state it does not know (raw state only, no title)', () => {
     const el = buildCellPopupContent({ ...base, state: 'something-new', pois: [] })
     expect(el.querySelector('.cell-popup-title')).toBeNull()
