@@ -26,7 +26,7 @@ Ca să schimbi datele inițiale, înlocuiește fișierul cu un backup nou export
 
 ## Import export Wayfarer (manual)
 
-1. Deschide [Wayfarer](https://wayfarer.pokemon-go.community/) în browser.
+1. Deschide [Wayfarer](https://wayfarer.scopely.com/mapview?z=16) în browser.
 2. Deschide DevTools → tab **Network**.
 3. Fă o căutare / selectează zona dorită în Wayfarer.
 4. În tab-ul Network, găsește cererea de date (de obicei `search` / `query`),
@@ -47,7 +47,7 @@ Ca să schimbi datele inițiale, înlocuiește fișierul cu un backup nou export
   „Refresh" / „Later". „Refresh" activează noul service worker și reîncarcă
   pagina; „Later" ascunde dialogul (versiunea nouă se aplică la următoarea
   sesiune). Pozele POI se încarcă de la CDN-ul Google doar când deschizi
-  popup-ul; se pot opri din setări („Show POI photos").
+  popup-ul.
 
 ## Publicare pe GitHub Pages
 

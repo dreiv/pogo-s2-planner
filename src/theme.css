@@ -218,3 +218,10 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
 }
+
+/* Partial data (the export lacks some of the cell's POIs): outlined instead of filled. */
+.gym-hint--partial {
+  background: #ffffff;
+  color: #b91c1c;
+  border: 1px dashed #b91c1c;
+}

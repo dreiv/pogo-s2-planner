@@ -12,6 +12,9 @@ export const GRID_MAX_CELLS: number =
     ? 800
     : 2500
 
+/** Where to get the Wayfarer data the app imports (also linked from "No data" cells). */
+export const WAYFARER_URL = 'https://wayfarer.scopely.com/mapview?z=16'
+
 /** From this zoom on, Power Spots and non-game POIs are drawn (below it only stops and gyms). */
 export const POI_FULL_DETAIL_ZOOM = 16
 

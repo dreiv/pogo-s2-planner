@@ -10,7 +10,12 @@ const updateSW = registerSW({
     needRefresh.value = true
   },
   onRegisteredSW(_url, registration) {
-    if (registration) window.setInterval(() => void registration.update(), 60 * 60 * 1000)
+    if (!registration) return
+    window.setInterval(() => void registration.update(), 60 * 60 * 1000)
+    // A phone app left in the background for days only wakes on focus: check then too.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void registration.update()
+    })
   }
 })
 

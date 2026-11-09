@@ -259,6 +259,23 @@ describe('PoiLayer', () => {
     })
   })
 
+  it('Power Spots are drawn from the full-detail zoom, and showPowerSpots hides them', () => {
+    const { map, zoomTo } = makeMap(14, VIEW)
+    const layer = new PoiLayer(map)
+    const pois = makePois(3)
+    pois[0]!.game = [{ entity: 'POWERSPOT', status: 'ACTIVE', brand: 'HOLOHOLO' }]
+    layer.setPois(pois)
+    expect(ops.filter((o) => o === 'add')).toHaveLength(2) // the 2 stops
+    zoomTo(16)
+    expect(ops.filter((o) => o === 'add')).toHaveLength(3)
+    ops.length = 0
+    layer.setOptions({ showPowerSpots: false })
+    expect(ops).toEqual(['remove'])
+    ops.length = 0
+    layer.setOptions({ showPowerSpots: true })
+    expect(ops).toEqual(['add'])
+  })
+
   it('showGyms / showStops hide and restore their own kind', () => {
     const { map } = makeMap(14, VIEW)
     const layer = new PoiLayer(map)

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import MapView from '../components/MapView.vue'
 import { useSettingsStore } from '../stores/settings'
 import { useDatasetStore } from '../stores/dataset'
+import { useMapFocusStore } from '../stores/mapFocus'
 import { CELL_FILL_OPACITY, CELL_STATE_COLORS } from '../theme'
 
 // MapView is tested against its collaborators' public API, not against Leaflet internals:
@@ -16,6 +17,7 @@ vi.mock('../map/createMap', () => ({
     on: vi.fn(),
     off: vi.fn(),
     remove: vi.fn(),
+    setView: vi.fn(),
     getCenter: vi.fn(() => ({ lat: 44.4, lng: 26.1 })),
     getZoom: vi.fn(() => 13)
   }))
@@ -118,6 +120,18 @@ describe('MapView', () => {
     settings.toggleGymHints()
     await wrapper.vm.$nextTick()
     expect(layerCalls).toContain('gymhint:destroy')
+    wrapper.unmount()
+  })
+
+  it('a focus request from a panel moves the map there', async () => {
+    const wrapper = mount(MapView)
+    const { createMap } = await import('../map/createMap')
+    const map = vi.mocked(createMap).mock.results.at(-1)!.value as {
+      setView: ReturnType<typeof vi.fn>
+    }
+    useMapFocusStore().focusOn(45.5, 21.5, 15)
+    await wrapper.vm.$nextTick()
+    expect(map.setView).toHaveBeenCalledWith([45.5, 21.5], 15)
     wrapper.unmount()
   })
 

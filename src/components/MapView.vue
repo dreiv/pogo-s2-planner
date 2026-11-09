@@ -4,7 +4,8 @@ import { createMap } from '../map/createMap'
 import { locateMe } from '../map/locateMe'
 import { S2GridLayer, type CellStyleFn } from '../map/S2GridLayer'
 import { GymHintLayer } from '../map/GymHintLayer'
-import { gymHintText } from '../core/gymHints'
+import { filterGymHints, gymHintText, isHintShown, type GymHintCell } from '../core/gymHints'
+import { useMapFocusStore } from '../stores/mapFocus'
 import { PoiLayer } from '../map/PoiLayer'
 import { RangeLayer } from '../map/RangeLayer'
 import { useSettingsStore } from '../stores/settings'
@@ -110,11 +111,20 @@ const emit = defineEmits<{
   cellSelected: [token: string]
 }>()
 
+function gymHintOptions() {
+  return { minCount: settings.gymHintMinCount, maxRemaining: settings.gymHintMaxRemaining }
+}
+
+/** Hints that pass the person's thresholds (the layer further thins them out when zoomed out). */
+function shownGymHints(): GymHintCell[] {
+  return filterGymHints(dataset.gymHints, gymHintOptions())
+}
+
 /** Full sentence for the popup; null when hints are off or the cell is not close to a gym. */
 function gymHintFor(s14Token: string): string | null {
   if (!settings.showGymHints) return null
   const cell = dataset.gymHintByS14.get(s14Token)
-  return cell ? gymHintText(cell.hint) : null
+  return cell && isHintShown(cell.hint, gymHintOptions()) ? gymHintText(cell) : null
 }
 
 function handleS17CellClick(token: string, lat: number, lng: number): void {
@@ -194,13 +204,20 @@ function syncGymHintLayer(): void {
   // Independent of the S14 grid: the badges are useful (and must be findable) with the grid off.
   const want = settings.showGymHints
   if (want && !gymHintLayer) {
-    gymHintLayer = new GymHintLayer(map, { minZoom: settings.s14MinZoom })
-    gymHintLayer.setHints(dataset.gymHints)
+    gymHintLayer = new GymHintLayer(map, {
+      minZoom: settings.s14MinZoom,
+      maxRemaining: settings.gymHintMaxRemaining
+    })
+    gymHintLayer.setHints(shownGymHints())
   } else if (!want && gymHintLayer) {
     gymHintLayer.destroy()
     gymHintLayer = null
   } else if (gymHintLayer) {
-    gymHintLayer.setMinZoom(settings.s14MinZoom)
+    gymHintLayer.setOptions({
+      minZoom: settings.s14MinZoom,
+      maxRemaining: settings.gymHintMaxRemaining
+    })
+    gymHintLayer.setHints(shownGymHints())
   }
 }
 
@@ -214,6 +231,7 @@ function syncPoiLayer(): void {
       fullDetailZoom: POI_FULL_DETAIL_ZOOM,
       showGyms: settings.showGyms,
       showStops: settings.showStops,
+      showPowerSpots: settings.showPowerSpots,
       showOther: settings.showOtherPois,
       thinOut: true,
       onThinChange: (thinned) => {
@@ -230,6 +248,7 @@ function syncPoiLayer(): void {
     poiLayer.setOptions({
       showGyms: settings.showGyms,
       showStops: settings.showStops,
+      showPowerSpots: settings.showPowerSpots,
       showOther: settings.showOtherPois
     })
     if (dataset.revision !== lastPoiRevision) {
@@ -310,10 +329,35 @@ watch(
   }
 )
 
-watch(() => [settings.showGymHints, settings.s14MinZoom] as const, syncGymHintLayer)
+watch(
+  () =>
+    [
+      settings.showGymHints,
+      settings.s14MinZoom,
+      settings.gymHintMinCount,
+      settings.gymHintMaxRemaining
+    ] as const,
+  syncGymHintLayer
+)
+
+// A sidebar panel (gym opportunities) asked the map to go somewhere.
+const mapFocus = useMapFocusStore()
+watch(
+  () => mapFocus.request,
+  (req) => {
+    if (req && map) map.setView([req.lat, req.lng], req.zoom)
+  }
+)
 
 watch(
-  () => [settings.showPois, settings.showGyms, settings.showStops, settings.showOtherPois] as const,
+  () =>
+    [
+      settings.showPois,
+      settings.showGyms,
+      settings.showStops,
+      settings.showPowerSpots,
+      settings.showOtherPois
+    ] as const,
   () => syncPoiLayer()
 )
 
@@ -333,7 +377,7 @@ watch(
   () => dataset.revision,
   () => {
     syncPoiLayer()
-    gymHintLayer?.setHints(dataset.gymHints)
+    gymHintLayer?.setHints(shownGymHints())
     s14Layer?.setCellStyle(makeS14CellStyle())
     s17Layer?.setCellStyle(makeS17CellStyle())
   }

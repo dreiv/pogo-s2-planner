@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { WAYFARER_URL } from '../config'
 import { computed, ref } from 'vue'
 import CollapsibleSection from './CollapsibleSection.vue'
 import InfoTip from './InfoTip.vue'
@@ -92,33 +93,51 @@ function formatTime(ts: number): string {
       <summary>How to get the Wayfarer JSON</summary>
       <ol>
         <li>
-          Open <a href="https://wayfarer.pokemon-go.community/" target="_blank" rel="noopener">Wayfarer</a>
+          Open
+          <a :href="WAYFARER_URL" target="_blank" rel="noopener">Wayfarer</a>
           in your browser.
         </li>
         <li>Open DevTools and switch to the Network tab.</li>
         <li>Search or select the area you want in Wayfarer.</li>
-        <li>In the Network tab, open the data request (usually search or query) and copy its Response (JSON).</li>
+        <li>
+          In the Network tab, open the data request (usually search or query) and copy its Response
+          (JSON).
+        </li>
         <li>Paste it below, or save it as a file and load it.</li>
       </ol>
     </details>
 
     <label class="ui-btn ui-btn--block file-btn">
       <input
-        type="file" accept=".json,.txt,application/json" multiple :disabled="importing"
-        @change="handleFileUpload" />
+        type="file"
+        accept=".json,.txt,application/json"
+        multiple
+        :disabled="importing"
+        @change="handleFileUpload"
+      />
       <span>📂 Load JSON file(s)</span>
     </label>
 
     <label class="field-label" for="wf-paste">…or paste JSON</label>
     <textarea
-      id="wf-paste" v-model="pasteText" class="paste-area" placeholder="Paste Wayfarer JSON here" rows="4"
-      :disabled="importing" aria-describedby="wf-paste-hint"></textarea>
+      id="wf-paste"
+      v-model="pasteText"
+      class="paste-area"
+      placeholder="Paste Wayfarer JSON here"
+      rows="4"
+      :disabled="importing"
+      aria-describedby="wf-paste-hint"
+    ></textarea>
     <button
-      class="ui-btn ui-btn--primary ui-btn--block" :disabled="importing || !pasteText.trim()"
-      @click="handlePaste">
+      class="ui-btn ui-btn--primary ui-btn--block"
+      :disabled="importing || !pasteText.trim()"
+      @click="handlePaste"
+    >
       {{ importing ? 'Importing…' : 'Import from text' }}
     </button>
-    <p v-if="!pasteText.trim() && !importing" id="wf-paste-hint" class="hint">Paste JSON to enable this button.</p>
+    <p v-if="!pasteText.trim() && !importing" id="wf-paste-hint" class="hint">
+      Paste JSON to enable this button.
+    </p>
 
     <div v-if="errors.length > 0" class="errors" role="alert">
       <h4>Errors</h4>
@@ -131,8 +150,8 @@ function formatTime(ts: number): string {
       <h4>Import summary</h4>
       <p class="summary-line">
         +{{ lastSummary.poisAdded }} new, {{ lastSummary.poisUpdated }} updated,
-        {{ lastSummary.poisRemoved }} removed <InfoTip term="removed" />, {{ lastSummary.poisUnchanged }} unchanged
-        · cells +{{ lastSummary.cellsAdded }}
+        {{ lastSummary.poisRemoved }} removed <InfoTip term="removed" />,
+        {{ lastSummary.poisUnchanged }} unchanged · cells +{{ lastSummary.cellsAdded }}
       </p>
       <p v-if="lastSummary.documents > 1" class="summary-line">
         {{ lastSummary.documents }} documents merged
@@ -156,8 +175,9 @@ function formatTime(ts: number): string {
         <dd>{{ lastSummary.warningCount }}</dd>
       </dl>
       <p v-if="lastSummary.nonS14Cells > 0" class="level-warning" role="alert">
-        {{ lastSummary.nonS14Cells }} cell(s) in this file are not S14. This planner colors S17 cells
-        only inside S14 cells, so that area will show no colors. Export the area from Wayfarer as S14 cells.
+        {{ lastSummary.nonS14Cells }} cell(s) in this file are not S14. This planner colors S17
+        cells only inside S14 cells, so that area will show no colors. Export the area from Wayfarer
+        as S14 cells.
       </p>
       <details v-if="lastSummary.warnings.length > 0" class="warning-list">
         <summary>Show {{ lastSummary.warnings.length }} warning(s)</summary>
@@ -173,7 +193,10 @@ function formatTime(ts: number): string {
       <ul>
         <li v-for="imp in dataset.imports" :key="imp.id">
           <span class="imp-name">{{ imp.fileName }}</span>
-          <span class="imp-meta">{{ formatTime(imp.importedAt) }} · {{ imp.poiCount }} POIs, {{ imp.cellCount }} cells</span>
+          <span class="imp-meta"
+            >{{ formatTime(imp.importedAt) }} · {{ imp.poiCount }} POIs,
+            {{ imp.cellCount }} cells</span
+          >
         </li>
       </ul>
       <p class="hint">Imports merge into your existing data; they do not replace it.</p>
@@ -204,7 +227,6 @@ function formatTime(ts: number): string {
   padding-left: 20px;
   line-height: 1.4;
 }
-
 
 .level-warning {
   margin: 8px 0 0;

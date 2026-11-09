@@ -54,6 +54,22 @@ describe('validateSettings', () => {
     expect(validateSettings({ showGymHints: false }).showGymHints).toBe(false)
   })
 
+  it('gym hint thresholds default to 3 / 3 and are clamped to whole numbers in range', () => {
+    const d = defaultSettings()
+    expect([d.gymHintMinCount, d.gymHintMaxRemaining]).toEqual([3, 3])
+    expect(validateSettings({ gymHintMinCount: 0 }).gymHintMinCount).toBe(1)
+    expect(validateSettings({ gymHintMinCount: 99 }).gymHintMinCount).toBe(10)
+    expect(validateSettings({ gymHintMaxRemaining: 2.6 }).gymHintMaxRemaining).toBe(3)
+    expect(validateSettings({ gymHintMaxRemaining: 99 }).gymHintMaxRemaining).toBe(5)
+    expect(validateSettings({ gymHintMaxRemaining: 'x' }).gymHintMaxRemaining).toBe(3)
+  })
+
+  it('Power Spots are shown by default', () => {
+    expect(defaultSettings().showPowerSpots).toBe(true)
+    expect(validateSettings({ showPowerSpots: false }).showPowerSpots).toBe(false)
+    expect(validateSettings({ showPowerSpots: 1 }).showPowerSpots).toBe(true)
+  })
+
   it('gyms, stops and non-game POIs are all shown by default', () => {
     const d = defaultSettings()
     expect([d.showGyms, d.showStops, d.showOtherPois]).toEqual([true, true, true])

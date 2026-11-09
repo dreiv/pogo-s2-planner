@@ -6,6 +6,7 @@ import MarksPanel from './components/MarksPanel.vue'
 import RangePanel from './components/RangePanel.vue'
 import GridsPanel from './components/GridsPanel.vue'
 import PoiPanel from './components/PoiPanel.vue'
+import GymSpotsPanel from './components/GymSpotsPanel.vue'
 import LegendPanel from './components/LegendPanel.vue'
 import ImportPanel from './components/ImportPanel.vue'
 import BackupPanel from './components/BackupPanel.vue'
@@ -55,11 +56,7 @@ function onCellSelected(token: string): void {
 <template>
   <div id="app-root">
     <MapView @cell-selected="onCellSelected" />
-    <div
-      v-if="dataset.loadError || dataset.storageError"
-      class="storage-banner"
-      role="alert"
-    >
+    <div v-if="dataset.loadError || dataset.storageError" class="storage-banner" role="alert">
       <span v-if="dataset.loadError">
         Could not read saved data ({{ dataset.loadError }}). The app is running with an empty,
         unsaved dataset.
@@ -83,6 +80,7 @@ function onCellSelected(token: string): void {
         <IntroGuide />
         <GridsPanel />
         <PoiPanel />
+        <GymSpotsPanel @navigate="panelOpen = false" />
         <MarksPanel ref="marksPanelRef" />
         <RangePanel />
         <LegendPanel />
@@ -116,7 +114,10 @@ function onCellSelected(token: string): void {
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   overflow: hidden;
   background: var(--bg-app);
   color: var(--text-primary);
@@ -233,7 +234,7 @@ body {
   cursor: pointer;
 }
 
-.toggle-row input[type="checkbox"] {
+.toggle-row input[type='checkbox'] {
   width: 16px;
   height: 16px;
 }
@@ -381,7 +382,7 @@ body {
     padding: 0;
   }
 
-  .toggle-row input[type="checkbox"] {
+  .toggle-row input[type='checkbox'] {
     width: 20px;
     height: 20px;
   }

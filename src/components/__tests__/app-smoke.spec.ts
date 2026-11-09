@@ -23,6 +23,7 @@ describe('App sidebar', () => {
     expect(ids).toEqual([
       'section-grids',
       'section-poi',
+      'section-gymspots',
       'section-marks',
       'section-range',
       'section-legend',
@@ -61,7 +62,10 @@ describe('App sidebar', () => {
     await new Promise((r) => setTimeout(r, 50))
     const before = w.findAll('*').length
     const data = Array.from({ length: 300 }, (_, i) => ({
-      metadata: { s2CellId: (0x47b2f00000000000n + BigInt(i) * 0x100000000n).toString(16), count: 1 },
+      metadata: {
+        s2CellId: (0x47b2f00000000000n + BigInt(i) * 0x100000000n).toString(16),
+        count: 1
+      },
       pois: [
         {
           poiId: `big-${i}`,

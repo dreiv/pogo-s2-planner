@@ -1,6 +1,7 @@
 // DOM nodes + textContent only (no innerHTML): POI titles are community-contributed text.
 import { CELL_STATE_TITLES, cellStateExplanation } from '../cellStateText'
 import type { CellState } from '../core/classify'
+import { WAYFARER_URL } from '../config'
 
 export interface CellPopupData {
   s17Token: string
@@ -15,8 +16,6 @@ export interface CellPopupData {
   /** "This S14 cell has 5 stops and gyms. With 1 more stop..." (when a gym is about to appear). */
   gymHint?: string | null
 }
-
-export const WAYFARER_URL = 'https://wayfarer.scopely.com/mapview?z=16'
 
 /**
  * Hint with a Wayfarer link, shown on "No data" cells. The coordinates sit in their own block

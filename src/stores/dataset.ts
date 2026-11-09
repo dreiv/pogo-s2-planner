@@ -87,11 +87,18 @@ export const useDatasetStore = defineStore('dataset', {
       void state.revision
       return markRaw(buildPoiIndex(state.pois))
     },
-    /** S14 cells close to their next gym (shared by the map badges and the cell popup). */
+    /**
+     * Every S14 cell with data that has not unlocked all its gyms. The person's thresholds are
+     * applied by the consumers (`filterGymHints`), so changing them never recomputes this.
+     */
     gymHints(state): GymHintCell[] {
       void state.revision
       return markRaw(
-        computeGymHints(this.poiIndex.poisByS14, buildCoverage(state.cells), cellCenter)
+        computeGymHints(
+          this.poiIndex.poisByS14,
+          new Map(state.cells.map((c) => [c.token, c.count])),
+          cellCenter
+        )
       )
     },
     gymHintByS14(): ReadonlyMap<string, GymHintCell> {

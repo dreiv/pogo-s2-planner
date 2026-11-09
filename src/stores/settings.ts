@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import {
   MARK_STATUS_IDS,
+  clampInt,
   clampRangeRadius,
   clampZoom,
   parseStoredSettings,
@@ -10,6 +11,7 @@ import {
   type SettingsData
 } from '../core/settings'
 import { CELL_STATE_FLAG } from '../core/cellVisibility'
+import { GYM_HINT_MAX_REMAINING_RANGE, GYM_HINT_MIN_COUNT_RANGE } from '../core/gymHints'
 import type { CellState } from '../core/classify'
 
 const STORAGE_KEY = 'pogo-s2-planner:settings'
@@ -57,6 +59,14 @@ export const useSettingsStore = defineStore('settings', {
       this.showGymHints = !this.showGymHints
       persist(this.$state)
     },
+    setGymHintMinCount(n: number): void {
+      this.gymHintMinCount = clampInt(n, GYM_HINT_MIN_COUNT_RANGE, this.gymHintMinCount)
+      persist(this.$state)
+    },
+    setGymHintMaxRemaining(n: number): void {
+      this.gymHintMaxRemaining = clampInt(n, GYM_HINT_MAX_REMAINING_RANGE, this.gymHintMaxRemaining)
+      persist(this.$state)
+    },
     toggleS17(): void {
       this.showS17 = !this.showS17
       persist(this.$state)
@@ -83,6 +93,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleShowStops(): void {
       this.showStops = !this.showStops
+      persist(this.$state)
+    },
+    toggleShowPowerSpots(): void {
+      this.showPowerSpots = !this.showPowerSpots
       persist(this.$state)
     },
     toggleShowRange(): void {

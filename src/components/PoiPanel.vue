@@ -31,6 +31,13 @@ const settings = useSettingsStore()
     />
     <ToggleRow
       indent
+      :checked="settings.showPowerSpots"
+      :disabled="!settings.showPois"
+      label="Show Power Spots"
+      @toggle="settings.toggleShowPowerSpots()"
+    />
+    <ToggleRow
+      indent
       :checked="settings.showOtherPois"
       :disabled="!settings.showPois"
       label="Show non-game POIs"

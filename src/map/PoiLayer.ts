@@ -17,6 +17,7 @@ export interface PoiLayerOptions {
   fullDetailZoom: number
   showGyms: boolean
   showStops: boolean
+  showPowerSpots: boolean
   /** Non-game POIs (only drawn from fullDetailZoom). */
   showOther: boolean
   /** Below fullDetailZoom, draw one POI per screen square (gym first) and smaller dots. */
@@ -29,6 +30,7 @@ export const DEFAULT_POI_LAYER_OPTS: PoiLayerOptions = {
   fullDetailZoom: 16,
   showGyms: true,
   showStops: true,
+  showPowerSpots: true,
   showOther: true,
   thinOut: false
 }
@@ -46,6 +48,7 @@ const VIEWPORT_PAD = 0.5
 function kindForZoom(kind: PoiKind, zoom: number, opts: PoiLayerOptions): boolean {
   if (kind === 'gym' && !opts.showGyms) return false
   if (kind === 'stop' && !opts.showStops) return false
+  if (kind === 'powerspot' && !opts.showPowerSpots) return false
   if (kind === 'other' && !opts.showOther) return false
   if (zoom < opts.fullDetailZoom && kind !== 'stop' && kind !== 'gym') return false
   return true

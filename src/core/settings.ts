@@ -2,6 +2,13 @@
 // Shared by the settings store (localStorage) and the backup importer, so a bad value
 // (hand-edited storage, old backup, truncated file) can never reach the map code.
 
+import {
+  GYM_HINT_MAX_REMAINING,
+  GYM_HINT_MAX_REMAINING_RANGE,
+  GYM_HINT_MIN_COUNT,
+  GYM_HINT_MIN_COUNT_RANGE
+} from './gymHints'
+
 /** Bump when the persisted shape or the meaning of a stored value changes; add a migration. */
 export const SETTINGS_VERSION = 2
 
@@ -24,11 +31,17 @@ export interface SettingsData {
   showS17: boolean
   /** "+2 → 2nd gym" badges on S14 cells that are close to their next gym. */
   showGymHints: boolean
+  /** A cell needs this many active stops + gyms before a gym hint is shown for it. */
+  gymHintMinCount: number
+  /** A gym hint is shown when at most this many more stops/gyms unlock the next gym. */
+  gymHintMaxRemaining: number
   s14MinZoom: number
   s17MinZoom: number
   showPois: boolean
   showGyms: boolean
   showStops: boolean
+  /** Power Spots (only drawn from the full-detail POI zoom). */
+  showPowerSpots: boolean
   /** Non-game POIs (places in the Wayfarer data with no active game object). */
   showOtherPois: boolean
   showRange: boolean
@@ -50,11 +63,14 @@ export function defaultSettings(): SettingsData {
     showS14: false,
     showS17: false,
     showGymHints: true,
+    gymHintMinCount: GYM_HINT_MIN_COUNT,
+    gymHintMaxRemaining: GYM_HINT_MAX_REMAINING,
     s14MinZoom: 13,
     s17MinZoom: 16,
     showPois: true,
     showGyms: true,
     showStops: true,
+    showPowerSpots: true,
     showOtherPois: true,
     showRange: false,
     rangeRadius: 80,
@@ -79,6 +95,11 @@ function finiteNumber(v: unknown): number | null {
 function clampedNumber(v: unknown, min: number, max: number, fallback: number): number {
   const n = finiteNumber(v)
   return n === null ? fallback : clamp(n, min, max)
+}
+
+/** Whole number inside [min, max]; anything missing or not a number falls back. */
+export function clampInt(v: unknown, range: readonly [number, number], fallback: number): number {
+  return Math.round(clampedNumber(v, range[0], range[1], fallback))
 }
 
 function bool(v: unknown, fallback: boolean): boolean {
@@ -119,11 +140,18 @@ export function validateSettings(raw: unknown): SettingsData {
     showS14: bool(s.showS14, def.showS14),
     showS17: bool(s.showS17, def.showS17),
     showGymHints: bool(s.showGymHints, def.showGymHints),
+    gymHintMinCount: clampInt(s.gymHintMinCount, GYM_HINT_MIN_COUNT_RANGE, def.gymHintMinCount),
+    gymHintMaxRemaining: clampInt(
+      s.gymHintMaxRemaining,
+      GYM_HINT_MAX_REMAINING_RANGE,
+      def.gymHintMaxRemaining
+    ),
     s14MinZoom: clampedNumber(s.s14MinZoom, ZOOM_MIN, ZOOM_MAX, def.s14MinZoom),
     s17MinZoom: clampedNumber(s.s17MinZoom, ZOOM_MIN, ZOOM_MAX, def.s17MinZoom),
     showPois: bool(s.showPois, def.showPois),
     showGyms: bool(s.showGyms, def.showGyms),
     showStops: bool(s.showStops, def.showStops),
+    showPowerSpots: bool(s.showPowerSpots, def.showPowerSpots),
     showOtherPois: bool(s.showOtherPois, def.showOtherPois),
     showRange: bool(s.showRange, def.showRange),
     rangeRadius: clampedNumber(s.rangeRadius, RANGE_RADIUS_MIN, RANGE_RADIUS_MAX, def.rangeRadius),

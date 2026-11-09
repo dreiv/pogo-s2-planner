@@ -1,9 +1,11 @@
 import L from 'leaflet'
-import { gymHintLabel, type GymHintCell } from '../core/gymHints'
+import { gymHintDeclutterLimit, gymHintLabel, type GymHintCell } from '../core/gymHints'
 
 export interface GymHintLayerOptions {
   /** Hints are shown from this zoom up (same as the S14 grid's minimum zoom). */
   minZoom: number
+  /** The person's "at most N more" setting; zoomed out only the closest hints are drawn. */
+  maxRemaining: number
 }
 
 /** Badges are created for cells inside the viewport padded by this ratio. */
@@ -35,9 +37,10 @@ export class GymHintLayer {
     this.refresh()
   }
 
-  setMinZoom(zoom: number): void {
-    if (zoom === this.opts.minZoom) return
-    this.opts = { ...this.opts, minZoom: zoom }
+  setOptions(opts: Partial<GymHintLayerOptions>): void {
+    const next = { ...this.opts, ...opts }
+    if (next.minZoom === this.opts.minZoom && next.maxRemaining === this.opts.maxRemaining) return
+    this.opts = next
     this.refresh()
   }
 
@@ -52,8 +55,8 @@ export class GymHintLayer {
 
   private createMarker(cell: GymHintCell): L.Marker {
     const badge = document.createElement('span')
-    badge.className = 'gym-hint'
-    badge.textContent = gymHintLabel(cell.hint)
+    badge.className = cell.partial ? 'gym-hint gym-hint--partial' : 'gym-hint'
+    badge.textContent = gymHintLabel(cell)
     return L.marker([cell.lat, cell.lng], {
       icon: L.divIcon({ className: 'gym-hint-icon', html: badge, iconSize: [0, 0] }),
       interactive: false,
@@ -62,14 +65,16 @@ export class GymHintLayer {
   }
 
   private refresh(): void {
-    if (this.map.getZoom() < this.opts.minZoom) {
+    const zoom = this.map.getZoom()
+    if (zoom < this.opts.minZoom) {
       if (this.markers.size > 0) this.clear()
       return
     }
+    const limit = gymHintDeclutterLimit(zoom, this.opts.maxRemaining)
     const b = this.map.getBounds().pad(VIEWPORT_PAD)
     const wanted = new Set<string>()
     for (const cell of this.hints) {
-      if (!b.contains([cell.lat, cell.lng])) continue
+      if (cell.hint.remaining > limit || !b.contains([cell.lat, cell.lng])) continue
       wanted.add(cell.token)
       if (this.markers.has(cell.token)) continue
       const marker = this.createMarker(cell)
